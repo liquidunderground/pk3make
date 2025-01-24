@@ -20,7 +20,7 @@ def make_workdir(workdir="build"):
 
     return
 
-def compile_assets(srcdir, workdir):
+def compile_assets(srcdir="src/", workdir="build/"):
     from modules import doompic
     print("# Compiling Assets")
     print("## Loading main palette")
@@ -36,6 +36,8 @@ def pack(workdir="build", pk3="bin/out.pk3"):
     return
 
 def main():
+    from modules import pk3makefile
+
     # Step switches
     step_prepare = False
     step_compile = False
@@ -43,10 +45,21 @@ def main():
     step_workdir = False
     step_workdir = False
 
-    make_workdir()
-    compile_assets()
-    pack()
-    clean()
+    try:
+        pk3mf_name = "./PK3Makefile"
+        if args.makefile != None:
+            pk3mf_name = args.makefile
+        pk3mf = pk3makefile.PK3Makefile(pk3mf_name)
+
+        make_workdir(pk3mf.get_options().workdir)
+        compile_assets(pk3mf.get_options().srcdir, pk3mf.get_options().workdir)
+        pack(pk3mf.get_options().workdir, pk3mf.get_options().destfile)
+
+    except FileNotFoundError as e:
+        print(f"An error occured. Exiting...\n{e}")
+        exit
+
+    #clean()
     return
 
 if __name__ == "__main__":
@@ -55,7 +68,6 @@ if __name__ == "__main__":
 
     # Shell argument API
     verbs = [
-        'help', # Print help
         'clean', # Delete workdir
         'prepare', # Make workdir tree etc.
         'compile', # Convert formats & copy files to workdir according to METAINFO
@@ -64,13 +76,12 @@ if __name__ == "__main__":
     ]
     ap_main = argparse.ArgumentParser(
             prog='pk3make',
-            description='Weissblatt PK3 compiler',
-            epilog='Type help, -h or --help for more info.')
+            description='PK3Make - Make for (Weissblatt) PK3s',
+            epilog='Type `pk3make --help` for more info.')
 
 
     ap_main.add_argument('verb' , help='Action to perform.', choices=verbs)
-    ap_main.add_argument('-f', '--force-recreate' , help='Recreate temp tree even when unneeded')
-    ap_main.add_argument('-p', '--palette' , help='Palette to use for converting PNG-based types')
+    ap_main.add_argument('makefile', nargs='?', const='./PK3Makefile', help='PK3Makefile to referebce')
 
     args = ap_main.parse_args()
 
