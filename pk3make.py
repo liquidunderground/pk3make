@@ -24,9 +24,10 @@ def compile_assets(srcdir="src/", workdir="build/"):
     from modules import doompic
     print("# Compiling Assets")
     print("## Loading main palette")
-    playpal = doompic.Palette(srcdir+"/PLAYPAL.png")
-    with open(workdir+"PLAYPAL", "w") as ofile:
-        ofile.write(playpal.tobytes)
+    playpal = doompic.Palette(srcdir,"PLAYPAL*.png")
+    with open(workdir+"PLAYPAL", "wb") as ofile:
+        ofile.write(playpal.tobytes())
+        print(playpal.tobytes())
     return
 
 def pack(workdir="build", pk3="bin/out.pk3"):
@@ -51,9 +52,11 @@ def main():
             pk3mf_name = args.makefile
         pk3mf = pk3makefile.PK3Makefile(pk3mf_name)
 
-        make_workdir(pk3mf.get_options().workdir)
-        compile_assets(pk3mf.get_options().srcdir, pk3mf.get_options().workdir)
-        pack(pk3mf.get_options().workdir, pk3mf.get_options().destfile)
+        print(f"MAKEOPTS: = {pk3mf.get_options()}")
+
+        make_workdir(pk3mf.get_options("workdir"))
+        compile_assets(pk3mf.get_options("srcdir"), pk3mf.get_options("workdir"))
+        pack(pk3mf.get_options("workdir"), pk3mf.get_options("destfile"))
 
     except FileNotFoundError as e:
         print(f"An error occured. Exiting...\n{e}")
