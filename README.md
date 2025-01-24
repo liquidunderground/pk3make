@@ -11,11 +11,11 @@
 
 PK3Make supplies multiple subcommands. To get an overview type:
 
-    python pk3make.py help
+    ./pk3make.py --help
 
 To fully build your project akin to a makefile, simply type:
 
-    python pk3make.py make ./PK3Makefile # Default PK3Makefile
+    ./pk3make.py make ./PK3Makefile # Default PK3Makefile
 
 
 ## But why?
@@ -47,21 +47,21 @@ Per-line, every character after `#` is treated as a comment.
 
 Build options are specified per-line and follow the pattern
 
-    ?<OPTION> <PARAM>
+    ?<OPTION>: <PARAM>
 
 PK3Make supports the following options:
 
-`?srcdir <DIR>` specifies the directory to pull it's base assets from.
+`?srcdir: <DIR>` specifies the directory to pull it's base assets from.
 PK3Make will attempt to find all defined lumps within this folder and
 mirror it's path within `?workdir` after compilation.
 
-`?workdir <DIR>` specifies the temporary working directory. PK3Make will
+`?workdir: <DIR>` specifies the temporary working directory. PK3Make will
 check the timestamps between this and `?srcdir` and rebuild/copy any
 outdated files into `?workdir` during the compilation process.
 
-`?palette` defines the main color palette, by `LUMPNAME` (`PLAYPAL` by default)
+`?palette:` defines the main color palette, by `LUMPNAME` (`PLAYPAL` by default)
 
-`?destfile` describes a filepath to the destination PK3. This is where
+`?destfile:` describes a filepath to the destination PK3. This is where
 `?workdir` will get copied to during packing.
 
 
@@ -83,13 +83,13 @@ the full file path, starting at the source directory.
 `TYPE` determines how the file is treated during compilation. It can be one
 of the following:
 
-- `raw`: Copy the file over as-is
+- `colormap`: File is a Colormap. OFFSET specifies the lump name for the palette from which it is generated
 - `fade`|`flat`: File is an image and should be converted to a flat. Only PNG images are supported.
-- `graphic`: File is an image and should be converted to a Doom Picture
-  using `OFFSET` (see below) as a picture offset. If missing, the offset is
-  assumed to be `0 0`.
-- `udmf`: Copy the file over as-is
-- `palette`: File is a graphic and should be converted to a color palette. Only PNG images supported.
+- `graphic`: File is an image and should be converted to a Doom Picture using `OFFSET` (see below) as a picture offset. If missing, the offset is assumed to be `0 0`.
+- `marker`: File does not exist and is a 0-byte marker. Explicit path definition required.  - `palette`: File is a graphic and should be converted to a color palette. Only PNG images supported.
+- `raw`: Copy the file over as-is
+- `tinttab`: File is a TINTTAB. OFFSET is defined as `<PALETTE> <WEIGHT>`. Upon generation, `PALETTE` orthogonally maps each color index against one another, `WEIGHT` specifies a bias towards horizontal/vertical colors between 0 and 1.
+- `udmf`: File is a UDMF TEXTMAP. Generate a map from it.
 
 `OFFSET` defines the offset of doompictures. For convenience, these can be either:
 
