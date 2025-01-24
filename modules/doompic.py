@@ -26,6 +26,10 @@ class Palette:
             if delta_e < min_delta_e:
                 min_delta_e = delta_e
         return 
+
+    def generate_colormap(self):
+        return
+
     def tobytes(self):
         # Convert self.colors to Doom Palette
         # Return as IOBytes for saving
@@ -54,6 +58,9 @@ class Palette:
             exbytes.append(g)
             exbytes.append(b)
         return bytes(exbytes)
+
+    def colormap_tobytes(self):
+        return
 
 ### MAIN CONVERTER FUNCTIONS ###
 
