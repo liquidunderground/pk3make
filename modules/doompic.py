@@ -83,42 +83,136 @@ class Palette:
     def colormap_tobytes(self):
         return
 
-### MAIN CONVERTER FUNCTIONS ###
+class Flat():
+    def __init__(self, pngfile: str, palette: Palette):
+        from PIL import Image
 
-def png2pic(pngfile, palette, xoffset=0, yoffset=0):
-    from PIL import Image
-    # TODO: PNG IN -> DOOM Pic OUT
-    print("png2pic is not implemented yet ;p")
-    picout = bytearray()
-    with Image.open(filename) as img:
-        # When it don't fit we make it fit
-        rawimg = img.load()
+        self.pixelbuf = bytearray()
+        with Image.open(pngfile).convert("RGBA") as img:
+            rawimg = img.load()
 
-        # Get pixels into self.colors
-        width, height = rawimg.size # should be (16,16)
-        for y in range(height):
-            for x in range(width):
-                pixel = rawimg[x,y]
-                # Flat = Raw paletted pixel dump
-                self.colors.append(palette.rgb2index(pixel))
-    return # Pic lump
+            # Get pixels into self.pixelbuf
+            self.width, self.height = img.size # should be
+            for y in range(self.height):
+                for x in range(self.width):
+                    pixel = rawimg[x,y]
+                    # Flat = Raw paletted pixel dump
+                    self.pixelbuf += palette.rgb2index(pixel).to_bytes(1,"little")
 
-def png2flat(pngfile, palette):
-    # TODO: PNG IN -> DOOM Flat OUT
-    print("png2flat is not implemented yet ;p")
-    flatout = bytearray
-    with Image.open(filename) as img:
-        # When it don't fit we make it fit
-        rawimg = img.load()
+    def get_size(self):
+        return (self.width, self.height)
 
-        # Get pixels into self.colors
-        width, height = rawimg.size # should be
-        for y in range(height):
-            for x in range(width):
-                pixel = rawimg[x,y]
-                # Flat = Raw paletted pixel dump
-                self.colors.append(palette.rgb2index(pixel))
-    return bytes(flatout) # Doom flat lump
+    def tobytes(self):
+        return bytes(self.pixelbuf)
 
-def png2fade(pngfile, palette):
-    return png2flat(pngfile, palette) # Fade lump. Are Fades really just flats?
+class Picture():
+    def __init__(self, pngfile: str, palette: Palette, *args):
+        from PIL import Image
+
+        if "offset" in args:
+            self.set_offset(offset)
+
+        self.palette = palette # Prolly unused but can't hurt
+
+        with Image.open(pngfile) as img:
+            # Get pixels into self.colors
+            self.width, self.height = img.size # should be
+            for y in range(self.height):
+                for x in range(self.width):
+                    pixel = img.getpixel( (x,y) )
+                    print(f"PIXEL ({x},{y}) = {pixel}")
+                    # Flat = Raw paletted pixel dump
+                    self.pixelbuf[x,y] = palette.rgb2index(pixel[0], pixel[1], pixel[2], pixel[3])
+
+        return bytes(flatout) # Doom flat lump
+
+    def set_offset(offset: str):
+        import re
+
+        if re.match("[0-9]* [0-9]*"):
+            tokens = re.search("([0-9]*) ([0-9]*)")
+            self.offsetX = int(tokens.group(1))
+            self.offsetY = int(tokens.group(2))
+            return
+
+        match offset:
+            case "": # No offset given - default to "0 0"
+                self.offsetX = 0
+                self.offsetY = 0
+            case "center":
+                self.offsetX = self.width/2
+                self.offsetY = self.height/2
+            case "sprite":
+                self.offsetX = self.width/2
+                self.offsetY = self.height-4
+            case _:
+                raise Exception(f'Offset "{offset}" not supported')
+        return
+
+    def tobytes(self):
+        # === Generate picture lump ===
+        #
+        # [HEADER]
+        # uint16_t LE width
+        # uint16_t LE height
+        # uint16_t LE offsetX
+        # uint16_t LE offsetY
+        # uint32_t[width] LE toc
+        # -----------------------------
+        # [COLUMN]
+        # uint8_t LE width
+        # uint8_t LE width
+        # uint8_t LE width
+        # uint8_t LE width
+
+
+        columns = []
+        out = bytearray
+        # --- Create Header ---
+        # NOTE: All integers in a Picture header are LE uint16_t
+        out.append(self.width.to_bytes(2, byteorder='little'))
+        out.append(self.height.to_bytes(2, byteorder='little'))
+        out.append(self.offsetX.to_bytes(2, byteorder='little'))
+        out.append(self.offsetY.to_bytes(2, byteorder='little'))
+
+        # Iterate Column-wise. Yes, Doom picture are column-oriented
+        toc = bytearray() # Table of Columns
+        t_fseek = len(out) + 4 * self.width # whXY + column TOC
+        for x in range(width):
+            t_cdata = bytearray # Column data
+            t_pdata = bytearray # Post data
+            t_insidepost = False
+            t_topdelta = 0
+            t_postheight = 0
+            for y in range(column):
+                # Yes. Doom pictures partition their columns into posts
+                pixel_alpha = self.pixelbuf[x,y][3] 
+                if pixel_alpha == 0 and insidepost: # Column END
+                    t_cdata.append(t_postheight.to_bytes(1, byteorder="little")) # Unused padding
+                    t_cdata.append(0x00) # Unused padding
+                    t_cdata.append(t_pdata) # Post data
+                    t_cdata.append(0xff) # Unused padding
+                    t_insidepost = False
+                elif pixel_alpha != 0 and not insidepost: # Column START
+                    t_topdelta = y
+                    t_postheight = 1
+                    t_cdata.append(t_topdelta)
+                    t_pdata.append(self.pixelbuf[x,y])
+                    insidepost = True
+                elif pixel_alpha != 0 and insidepost:
+                    t_pdata.append(self.pixelbuf[x,y])
+                    t_postheight = t_postheight + 1
+
+                t_cdata.append(0xff) # Column terminator
+            columns.append(t_cdata) # Save partitioned column whole
+
+            out.append(toc) # Finish off header
+            for col in columns: # Write column data block
+                out.append(col)
+
+        return bytes(out)
+
+# ========================================= #
+
+#def png2fade(pngfile, palette):
+    #return png2flat(pngfile, palette) # Fade lump. Are Fades really just flats?
