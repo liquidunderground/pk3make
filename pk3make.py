@@ -10,7 +10,7 @@ def clean(workdir="build"):
         pass
     return
 
-def make_workdir(workdir="build"):
+def prepare(workdir="build"):
     import os
     print("# Creating WORKDIR '{}'".format(workdir))
     try:
@@ -20,14 +20,68 @@ def make_workdir(workdir="build"):
 
     return
 
-def compile_assets(srcdir="src/", workdir="build/"):
-    from modules import doompic
+def compile_palette(srcdir, workdir, lumpname):
+    from modules import doompic,doomglob
+    import os
+
     print("# Compiling Assets")
     print("## Loading main palette")
-    playpal = doompic.Palette(srcdir,"PLAYPAL*.png")
-    with open(workdir+"PLAYPAL", "wb") as ofile:
-        ofile.write(playpal.tobytes())
-        print(playpal.tobytes())
+    pal = doompic.Palette(srcdir, lumpname)
+
+    palglob = doomglob.find_lump(srcdir, lumpname)
+
+    if len(palglob) > 1:
+        raise DuplicateLumpError(f"Duplicate {palglob}")
+
+    dest = workdir + '/' + \
+        os.path.dirname(palglob[0][1]) + \
+        palglob[0][0]
+
+
+    print(f'## Writing palette "{dest}"')
+    with open(dest, "wb") as ofile:
+        ofile.write(pal.tobytes())
+    return pal
+
+def build(makefile):
+    from modules import doompic, doomglob
+    import shutil
+
+    opts = makefile.get_options()
+
+    if opts["palette"] == None:
+        print("WARNING: Default color palette is not defined. Compiling graphics will lead to errors.")
+
+    playpal = compile_palette(opts["srcdir"], opts["workdir"], opts["palette"])
+
+
+    for lumpdef in makefile.get_lumpdefs():
+
+        lumpglob = doomglob.find_lump(opts["srcdir"], lumpdef[0])
+
+        for lump in lumpglob:
+
+            srcfile = opts["srcdir"] + '/' + lump[1]
+            destfile = opts["workdir"] + lump[2]
+
+            bytedump = None
+
+            match lumpdef[1]:
+                case "graphic":
+                    print(f'Converting Picture "{srcfile}"...')
+                    bytedump = doompic.Picture(srcfile, playpal, lumpdef[2]).tobytes()
+                case "flat" | "fade":
+                    print(f'Converting Flat "{srcfile}"...')
+                    bytedump = doompic.Flat(srcfile, playpal).tobytes()
+                case "udmf":
+                    print(f'UDMF lumps conversion is currently not supported.')
+                case "raw":
+                    shutil.copy2(srcfile, destfile)
+
+            if bytedump != None:
+                with open(destfile, "wb") as ofile:
+                    ofile.write(bytedump)
+
     return
 
 def pack(workdir="build", pk3="bin/out.pk3"):
