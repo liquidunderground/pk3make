@@ -3,40 +3,45 @@ class Palette:
     def __init__(self, srcdir, lumpname):
     #def __init__(self, filename):
         import os
-        from modules import doomglob
+        from modules.doomglob import find_lump, DuplicateLumpError
         from PIL import Image
-        filename = doomglob.find_lump(srcdir, lumpname)
+
+        filename = find_lump(srcdir, lumpname)
         print (f"DOOMGLOB FIND : {filename}")
 
         if len(filename) > 1:
-            raise Exception("Lump name is not unique")
+            raise DuplicateLumpError(f"Color palette {lumpname} is not unique.")
 
-        with Image.open(os.path.join(srcdir,filename[0][1])) as img:
+        with Image.open(os.path.join(srcdir,filename[0][1])).convert("RGB") as img:
             # When it don't fit we make it fit
             rez_i = img.resize( (16,16), Image.Resampling.NEAREST)
-            rawimg = rez_i.load()
 
             # Get pixels into self.colors
             width, height = rez_i.size # should be (16,16)
             for y in range(height):
                 for x in range(width):
-                    pixel = rawimg[x,y]
-                    self.colors.append(pixel[0]) # Red
-                    self.colors.append(pixel[1]) # Green
-                    self.colors.append(pixel[2]) # Brue
+                    pixel = rez_i.getpixel((x,y))
+                    self.colors.append(pixel) # Tuple (R,G,B)
 
-    def rgb2index(self, color):
-        import colormath
-        print("rgb2index is not implemented yet ;p")
-        # TODO: Return closest index using colormath
-        col_needle = colormath.color_conversions.convert_color(colormath.sRGBColor(color), colormath.LabColor)
+    def rgb2index(self, color: tuple):
+        from colormath2.color_objects import sRGBColor, LabColor
+        from colormath2.color_conversions import convert_color
+        from colormath2.color_diff import delta_e_cie2000
+
+        color_lab = convert_color(sRGBColor(color[0], color[1], color[2], is_upscaled=True), LabColor)
         min_delta_e = float('inf')
-        for index in self.colors:
-            sRGBColor
-            delta_e = delta_e_cie2000(col_needle)
+        min_idx = int
+        for index,icolor in enumerate(self.colors):
+            #print(f"ICOLOR {index}: {icolor}")
+            icolor_lab = convert_color(sRGBColor(icolor[0], icolor[1], icolor[2], is_upscaled=True), LabColor)
+            delta_e = delta_e_cie2000(color_lab, icolor_lab)
             if delta_e < min_delta_e:
                 min_delta_e = delta_e
-        return 
+                min_idx = index
+            if delta_e == 0: # Exact match, no need to continue
+                break
+        #print(f"Found color {min_idx}:{self.colors[min_idx]} for image color {color}")
+        return min_idx
 
     def generate_colormap(self):
         return
@@ -46,7 +51,6 @@ class Palette:
         # Return as IOBytes for saving
         exbytes = bytearray()
         for page in range(14):
-            print(f"GENERATING PAGE {page}")
             for i in range(256):
                 # Default unused palette: Grayscale
                 r = 255-i
@@ -54,21 +58,21 @@ class Palette:
                 b = 255-i
 
                 if page == 0: # Regular palette
-                    r = self.colors[i*3]
-                    g = self.colors[i*3+1]
-                    b = self.colors[i*3+2]
+                    r = self.colors[i][0]
+                    g = self.colors[i][1]
+                    b = self.colors[i][2]
                 elif 0 < page < 4: # Whiteout palettes => 75% white tint
-                    r = self.colors[i*3]+ (255 - self.colors[i*3]) * 0.75
-                    g = self.colors[i*3+1]+ (255 - self.colors[i*3+1]) * 0.75
-                    b = self.colors[i*3+2]+ (255 - self.colors[i*3+2]) * 0.75
+                    r = self.colors[i][0] + (255 - self.colors[i][0]) * 0.75
+                    g = self.colors[i][1] + (255 - self.colors[i][1]) * 0.75
+                    b = self.colors[i][2] + (255 - self.colors[i][2]) * 0.75
                 elif page == 4: # Nuke palette => 75% white tint + g,b = 113
-                    r = self.colors[i*3]+ (255 - self.colors[i*3]) * 0.75
+                    r = self.colors[i][0] + (255 - self.colors[i][0]) * 0.75
                     g = 113
                     b = 113
                 elif page == 5: # Inverted palette at 75% brightness
-                    r = (255 - self.colors[i*3]) * 0.75
-                    g = (255 - self.colors[i*3+1]) * 0.75
-                    b = (255 - self.colors[i*3+2]) * 0.75
+                    r = (255 - self.colors[i][0]) * 0.75
+                    g = (255 - self.colors[i][1]) * 0.75
+                    b = (255 - self.colors[i][2]) * 0.75
                 # Add color idx.
                 # NOTE: the int() cast is janky but hopefully works
                 exbytes.append(int(r))
