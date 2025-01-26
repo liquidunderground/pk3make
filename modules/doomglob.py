@@ -1,3 +1,8 @@
+class DuplicateLumpError(Exception):
+    """To be raised when a lump should really be unique"""
+    pass
+
+
 def find_lump(srcdir, lumpname):
     import os, glob
     out = list()
