@@ -84,10 +84,35 @@ def build(makefile):
 
     return
 
-def pack(workdir="build", pk3="bin/out.pk3"):
-    from modules import pk3zip
+def pack(makefile):
+    from modules import pk3zip, doomglob
+    import os
+
+    opts = makefile.get_options()
+    if opts["destfile"] == None:
+        raise FileNotFoundError("destfile is not defined")
+
+    if not os.path.isdir(os.path.dirname(opts["destfile"])):
+        print(f'# Creating directory {os.path.dirname(opts["destfile"])}')
+        os.mkdir(os.path.dirname(opts["destfile"]))
+
     print("# Packing")
-    pk3zip.add_marker("S_SUPER", pk3)
+
+    for lumpdef in makefile.get_lumpdefs():
+
+        if lumpdef[1] != "marker":
+            # wf_ = Workfile
+            print(f'packing lump {opts["workdir"]}, {lumpdef}')
+            wf_glob = doomglob.find_lump(opts["workdir"], lumpdef[0])
+            wf_path = opts["workdir"] + '/' + \
+                os.path.dirname(wf_glob[0][1]) + \
+                wf_glob[0][0]
+
+        match lumpdef[1]:
+            case "marker":
+                pk3zip.add_marker(lumpdef[0], opts["destfile"])
+            case _:
+                pk3zip.copy_file("", opts["destfile"], lumpdef[0].stem[:8])
     return
 
 def main():
