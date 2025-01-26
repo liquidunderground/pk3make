@@ -120,26 +120,38 @@ def main():
 
     # Step switches
     step_prepare = False
-    step_compile = False
+    step_build = False
     step_pack = False
-    step_workdir = False
-    step_workdir = False
 
-    try:
-        pk3mf_name = "./PK3Makefile"
-        if args.makefile != None:
-            pk3mf_name = args.makefile
-        pk3mf = pk3makefile.PK3Makefile(pk3mf_name)
+    match args.verb:
+        case "prepare":
+            step_prepare = True
+        case "build":
+            step_build = True
+        case "pack":
+            step_pack = True
+        case "all":
+            step_prepare = True
+            step_build = True
+            step_pack = True
 
-        print(f"MAKEOPTS: = {pk3mf.get_options()}")
+    if args.verb == "clean":
+        clean()
 
-        make_workdir(pk3mf.get_options("workdir"))
-        compile_assets(pk3mf.get_options("srcdir"), pk3mf.get_options("workdir"))
-        pack(pk3mf.get_options("workdir"), pk3mf.get_options("destfile"))
+    pk3mf_name = "./PK3Makefile"
+    if args.makefile != None:
+        pk3mf_name = args.makefile
+    pk3mf = pk3makefile.PK3Makefile(pk3mf_name)
 
-    except FileNotFoundError as e:
-        print(f"An error occured. Exiting...\n{e}")
-        exit
+    print(f"MAKEOPTS: = {pk3mf.get_options()}")
+
+    # TODO: Add resolve for missing dependencies
+    if step_prepare:
+        prepare(pk3mf.get_options("workdir"))
+    if step_build:
+        build(pk3mf)
+    if step_pack:
+        pack(pk3mf)
 
     #clean()
     return
@@ -152,9 +164,9 @@ if __name__ == "__main__":
     verbs = [
         'clean', # Delete workdir
         'prepare', # Make workdir tree etc.
-        'compile', # Convert formats & copy files to workdir according to METAINFO
+        'build', # Convert formats & copy files to workdir according to METAINFO
         'pack', # Pack existing workdir into pk3. (May be used for music packs?)
-        'make', # Do everything
+        'all', # Do everything
     ]
     ap_main = argparse.ArgumentParser(
             prog='pk3make',
