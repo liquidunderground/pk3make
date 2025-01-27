@@ -69,7 +69,7 @@ def build(makefile):
             match lumpdef[1]:
                 case "graphic":
                     print(f'Converting Picture "{srcfile}"...')
-                    bytedump = doompic.Picture(srcfile, playpal, lumpdef[2]).tobytes()
+                    bytedump = doompic.Picture(srcfile, playpal, offset=lumpdef[2]).tobytes()
                 case "flat" | "fade":
                     print(f'Converting Flat "{srcfile}"...')
                     bytedump = doompic.Flat(srcfile, playpal).tobytes()
@@ -78,7 +78,9 @@ def build(makefile):
                 case "raw":
                     shutil.copy2(srcfile, destfile)
 
+
             if bytedump != None:
+                print(f'## Writing {lumpdef[1]} "{destfile}"')
                 with open(destfile, "wb") as ofile:
                     ofile.write(bytedump)
 

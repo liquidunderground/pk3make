@@ -106,48 +106,52 @@ class Flat():
         return bytes(self.pixelbuf)
 
 class Picture():
-    def __init__(self, pngfile: str, palette: Palette, *args):
+    def __init__(self, pngfile: str, palette: Palette, **kwargs):
         from PIL import Image
-
-        if "offset" in args:
-            self.set_offset(offset)
 
         self.palette = palette # Prolly unused but can't hurt
 
-        with Image.open(pngfile) as img:
-            # Get pixels into self.colors
+        self.pixelbuf = []
+        with Image.open(pngfile).convert("RGBA") as img:
+
+            # Get pixels into self.pixelbuf
             self.width, self.height = img.size # should be
             for y in range(self.height):
                 for x in range(self.width):
-                    pixel = img.getpixel( (x,y) )
-                    print(f"PIXEL ({x},{y}) = {pixel}")
-                    # Flat = Raw paletted pixel dump
-                    self.pixelbuf[x,y] = palette.rgb2index(pixel[0], pixel[1], pixel[2], pixel[3])
+                    pixel = img.getpixel((x,y))
+                    # Save picture as indexed image (-1 = transparent)
+                    if pixel[3] == 0:
+                        self.pixelbuf.append( -1 )
+                    else:
+                        self.pixelbuf.append( palette.rgb2index(pixel) )
 
-        return bytes(flatout) # Doom flat lump
+        if "offset" in kwargs:
+            new_offset = self.set_offset(kwargs["offset"])
 
-    def set_offset(offset: str):
+
+    def set_offset(self, offset: str):
         import re
 
-        if re.match("[0-9]* [0-9]*"):
-            tokens = re.search("([0-9]*) ([0-9]*)")
+        tokens = re.match(r"\s+(-?[0-9]+)\s+(-?[0-9]+)\s*", offset)
+        if tokens:
             self.offsetX = int(tokens.group(1))
             self.offsetY = int(tokens.group(2))
-            return
+            return (self.offsetX, self.offsetY)
 
-        match offset:
+        tokens = re.match(r"\s+([^\s]+)\s*", offset)
+        match tokens.group(1):
             case "": # No offset given - default to "0 0"
                 self.offsetX = 0
                 self.offsetY = 0
             case "center":
-                self.offsetX = self.width/2
-                self.offsetY = self.height/2
+                self.offsetX = int(self.width/2)
+                self.offsetY = int(self.height/2)
             case "sprite":
-                self.offsetX = self.width/2
-                self.offsetY = self.height-4
+                self.offsetX = int(self.width/2)
+                self.offsetY = int(self.height-4)
             case _:
                 raise Exception(f'Offset "{offset}" not supported')
-        return
+        return (self.offsetX, self.offsetY)
 
     def tobytes(self):
         # === Generate picture lump ===
@@ -166,53 +170,60 @@ class Picture():
         # uint8_t LE width
 
 
-        columns = []
-        out = bytearray
+        columns = bytearray()
         # --- Create Header ---
         # NOTE: All integers in a Picture header are LE uint16_t
-        out.append(self.width.to_bytes(2, byteorder='little'))
-        out.append(self.height.to_bytes(2, byteorder='little'))
-        out.append(self.offsetX.to_bytes(2, byteorder='little'))
-        out.append(self.offsetY.to_bytes(2, byteorder='little'))
+        out = bytearray( \
+            self.width.to_bytes(2, byteorder='little') + \
+            self.height.to_bytes(2, byteorder='little') + \
+            self.offsetX.to_bytes(2, byteorder='little', signed=True) + \
+            self.offsetY.to_bytes(2, byteorder='little', signed=True) \
+            )
 
         # Iterate Column-wise. Yes, Doom picture are column-oriented
         toc = bytearray() # Table of Columns
         t_fseek = len(out) + 4 * self.width # whXY + column TOC
-        for x in range(width):
-            t_cdata = bytearray # Column data
-            t_pdata = bytearray # Post data
+        for x in range(self.width):
+            t_cdata = bytearray() # Column data
+            t_pdata = bytearray() # Post data
             t_insidepost = False
             t_topdelta = 0
             t_postheight = 0
-            for y in range(column):
+            for y in range(self.height):
                 # Yes. Doom pictures partition their columns into posts
-                pixel_alpha = self.pixelbuf[x,y][3] 
-                if pixel_alpha == 0 and insidepost: # Column END
-                    t_cdata.append(t_postheight.to_bytes(1, byteorder="little")) # Unused padding
-                    t_cdata.append(0x00) # Unused padding
-                    t_cdata.append(t_pdata) # Post data
-                    t_cdata.append(0xff) # Unused padding
+                #print(f"Current Pixel ({x},{y}): {self.pixelbuf[y*self.width+x]}")
+                current_pixel = self.pixelbuf[y*self.width+x]
+                if current_pixel == -1 and t_insidepost: # Column END
+                    t_cdata.extend(t_postheight.to_bytes(1, byteorder="little")) # Unused padding
+                    t_cdata.extend(b'\x00') # Unused padding
+                    t_cdata.extend(t_pdata) # Post data
+                    t_cdata.extend(b'\x00') # Unused padding
+                    t_cdata.extend(b'\xff') # Terminator
                     t_insidepost = False
-                elif pixel_alpha != 0 and not insidepost: # Column START
+                elif current_pixel != -1 and not t_insidepost: # Column START
                     t_topdelta = y
                     t_postheight = 1
-                    t_cdata.append(t_topdelta)
-                    t_pdata.append(self.pixelbuf[x,y])
-                    insidepost = True
-                elif pixel_alpha != 0 and insidepost:
-                    t_pdata.append(self.pixelbuf[x,y])
+                    t_cdata.extend(t_topdelta.to_bytes(1, byteorder="little"))
+                    t_pdata.extend(current_pixel.to_bytes(1, byteorder="little"))
+                    t_insidepost = True
+                elif current_pixel != -1 and t_insidepost:
+                    t_pdata.extend(current_pixel.to_bytes(1, byteorder="little"))
                     t_postheight = t_postheight + 1
 
-                t_cdata.append(0xff) # Column terminator
-            columns.append(t_cdata) # Save partitioned column whole
+            if t_insidepost: # Finish last post if End Of Column
+                t_cdata.extend(t_postheight.to_bytes(1, byteorder="little")) # Unused padding
+                t_cdata.extend(b'\x00') # Unused padding
+                t_cdata.extend(t_pdata) # Post data
+                t_cdata.extend(b'\x00') # Unused padding
+                t_cdata.extend(b'\xff') # Terminator
 
-            out.append(toc) # Finish off header
-            for col in columns: # Write column data block
-                out.append(col)
+            columns.extend(t_cdata) # Save partitioned column whole
+
+            # Add TOC column offset
+            toc.extend(t_fseek.to_bytes(4, byteorder='little'))
+            t_fseek = t_fseek+len(t_cdata)
+
+        out.extend(toc) # Finish off header
+        out.extend(columns) # Write column data block
 
         return bytes(out)
-
-# ========================================= #
-
-#def png2fade(pngfile, palette):
-    #return png2flat(pngfile, palette) # Fade lump. Are Fades really just flats?
