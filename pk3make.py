@@ -24,11 +24,21 @@ def compile_palette(srcdir, workdir, lumpname):
     from modules import doompic,doomglob
     import os
 
-    print("# Compiling Assets")
     print("## Loading main palette")
-    pal = doompic.Palette(srcdir, lumpname)
-
+    # Check for duplicates
     palglob = doomglob.find_lump(srcdir, lumpname)
+
+    if len(palglob) > 1:
+        globlist = []
+        for f in palglob:
+            globlist.append(f[1])
+        raise DuplicateLumpError(f"Color palette {lumpname} is not unique.\n{globlist}")
+    elif len(palglob) < 1:
+        raise FileNotFoundError(f"Color palette {lumpname} not found.")
+
+
+    # Actually build the palette
+    pal = doompic.Palette(os.path.join(srcdir,palglob[0][1]))
 
     if len(palglob) > 1:
         raise DuplicateLumpError(f"Duplicate {palglob}")
@@ -58,8 +68,19 @@ def build(makefile):
     for lumpdef in makefile.get_lumpdefs():
 
         lumpglob = doomglob.find_lump(opts["srcdir"], lumpdef[0])
+        print (f"DOOMGLOB FIND : {lumpglob}")
 
         for lump in lumpglob:
+
+            lump_dcheck = doomglob.find_lump(opts["srcdir"], lump[0])
+
+            # Error check
+            if len(lump_dcheck) > 1:
+                globlist = []
+                for f in lump_dcheck:
+                    globlist.append(f[1])
+                raise DuplicateLumpError(f"Color palette {lumpname} is not unique.\n{globlist}")
+
 
             srcfile = opts["srcdir"] + '/' + lump[1]
             destfile = opts["workdir"] + lump[2]

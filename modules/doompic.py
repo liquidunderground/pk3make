@@ -1,18 +1,12 @@
 class Palette:
     colors = []
-    def __init__(self, srcdir, lumpname):
-    #def __init__(self, filename):
+    def __init__(self, filename):
         import os
         from modules.doomglob import find_lump, DuplicateLumpError
         from PIL import Image
 
-        filename = find_lump(srcdir, lumpname)
-        print (f"DOOMGLOB FIND : {filename}")
 
-        if len(filename) > 1:
-            raise DuplicateLumpError(f"Color palette {lumpname} is not unique.")
-
-        with Image.open(os.path.join(srcdir,filename[0][1])).convert("RGB") as img:
+        with Image.open(filename).convert("RGB") as img:
             # When it don't fit we make it fit
             rez_i = img.resize( (16,16), Image.Resampling.NEAREST)
 
