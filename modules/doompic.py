@@ -92,6 +92,10 @@ class Flat():
 
             # Get pixels into self.pixelbuf
             self.width, self.height = img.size # should be
+
+            if self.width != self.height:
+                raise RuntimeError(f"Flat is not square. ({self.width},{self.height})")
+
             for y in range(self.height):
                 for x in range(self.width):
                     pixel = img.getpixel((x,y))
