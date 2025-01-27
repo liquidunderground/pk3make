@@ -89,13 +89,12 @@ class Flat():
 
         self.pixelbuf = bytearray()
         with Image.open(pngfile).convert("RGBA") as img:
-            rawimg = img.load()
 
             # Get pixels into self.pixelbuf
             self.width, self.height = img.size # should be
             for y in range(self.height):
                 for x in range(self.width):
-                    pixel = rawimg[x,y]
+                    pixel = img.getpixel((x,y))
                     # Flat = Raw paletted pixel dump
                     self.pixelbuf += palette.rgb2index(pixel).to_bytes(1,"little")
 
