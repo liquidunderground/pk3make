@@ -20,7 +20,7 @@ def find_lump(srcdir, lumpname):
     #for path in glob.glob(searchstr, root_dir=srcdir):
     for path in glob.iglob('**/'+lumpname+'*', root_dir=srcdir, recursive=True):
         doomname = Path(path).stem[:8]
-        arcpath = os.path.dirname(path)+'/'+doomname
+        arcpath = '/'+os.path.dirname(path).lstrip('/')+'/'+doomname
         out.append( (doomname, path, arcpath) )
 
     return out # List of tuples (LUMPNAME, PATH, ARCPATH)
