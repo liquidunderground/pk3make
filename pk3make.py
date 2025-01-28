@@ -20,10 +20,40 @@ def prepare(workdir="build"):
 
     return
 
+def cr_build_lump(lumpdef, playpal, srcfile,destfile, opts):
+    import shutil,os
+    from modules import doompic
+
+    bytedump = None
+
+    match lumpdef[1]:
+        case "graphic":
+            print(f'Converting Picture "{srcfile}"...')
+            bytedump = doompic.Picture(srcfile, playpal, offset=lumpdef[2]).tobytes()
+        case "flat" | "fade":
+            print(f'Converting Flat "{srcfile}"...')
+            bytedump = doompic.Flat(srcfile, playpal).tobytes()
+        case "udmf":
+            print(f'UDMF lumps conversion is currently not supported.')
+        case "palette":
+            print(f'## Loading palette "{srcfile}"')
+            pal = playpal if lumpdef[0] == opts["palette"] else pal
+            bytedump = pal.tobytes()
+        case "raw":
+            with open(srcfile, mode='rb') as s:
+                bytedump = s.read()
+
+    if bytedump != None:
+        print(f'## Writing {lumpdef[1]} "{destfile}"')
+        os.makedirs(os.path.dirname(destfile), exist_ok=True)
+        with open(destfile, "wb") as ofile:
+            ofile.write(bytedump)
+
 
 def build(makefile):
     from modules import doompic, doomglob
     import shutil, os
+    import asyncio, concurrent.futures
 
     opts = makefile.get_options()
 
@@ -46,56 +76,32 @@ def build(makefile):
 
     # ======== #
 
-    for lumpdef in makefile.get_lumpdefs():
+    with concurrent.futures.ProcessPoolExecutor() as ppx:
 
-        lumpglob = doomglob.find_lump(opts["srcdir"], lumpdef[0])
-        print (f"DOOMGLOB FIND : {lumpglob}")
+        for lumpdef in makefile.get_lumpdefs():
 
-        for lump in lumpglob:
+            lumpglob = doomglob.find_lump(opts["srcdir"], lumpdef[0])
+            print (f"DOOMGLOB FIND : {lumpglob}")
 
-            lump_dcheck = doomglob.find_lump(opts["srcdir"], lump[0])
+            for lump in lumpglob:
 
-            # Error check
-            if len(lump_dcheck) > 1:
-                globlist = []
-                for f in lump_dcheck:
-                    globlist.append(f[1])
-                raise doomglob.DuplicateLumpError(f"Lump {lump[0]} is not unique.\n{globlist}")
+                lump_dcheck = doomglob.find_lump(opts["srcdir"], lump[0])
 
-
-            srcfile = opts["srcdir"] + '/' + lump[1]
-            destfile = opts["workdir"] + lump[2]
-
-            # Out-Of-Date check
-            if os.path.exists(destfile) and os.path.getmtime(srcfile) < os.path.getmtime(destfile):
-                continue
-
-            bytedump = None
-
-            match lumpdef[1]:
-                case "graphic":
-                    print(f'Converting Picture "{srcfile}"...')
-                    bytedump = doompic.Picture(srcfile, playpal, offset=lumpdef[2]).tobytes()
-                case "flat" | "fade":
-                    print(f'Converting Flat "{srcfile}"...')
-                    bytedump = doompic.Flat(srcfile, playpal).tobytes()
-                case "udmf":
-                    print(f'UDMF lumps conversion is currently not supported.')
-                case "palette":
-                    print(f'## Loading palette "{srcfile}"')
-                    pal = playpal if lumpdef[0] == opts["palette"] else pal
-                    bytedump = pal.tobytes()
-                case "raw":
-                    with open(srcfile, mode='rb') as s:
-                        bytedump = s.read()
+                # Error check
+                if len(lump_dcheck) > 1:
+                    globlist = []
+                    for f in lump_dcheck:
+                        globlist.append(f[1])
+                    raise doomglob.DuplicateLumpError(f"Lump {lump[0]} is not unique.\n{globlist}")
 
 
-            if bytedump != None:
-                print(f'## Writing {lumpdef[1]} "{destfile}"')
-                os.makedirs(os.path.dirname(destfile), exist_ok=True)
-                with open(destfile, "wb") as ofile:
-                    ofile.write(bytedump)
+                srcfile = opts["srcdir"] + '/' + lump[1]
+                destfile = opts["workdir"] + lump[2]
 
+                # Out-Of-Date check
+                if os.path.exists(destfile) and os.path.getmtime(srcfile) < os.path.getmtime(destfile):
+                    continue
+                ppx.submit(cr_build_lump,  lumpdef, playpal, srcfile,destfile, opts)
     return
 
 def pack(makefile):
@@ -116,7 +122,7 @@ def pack(makefile):
 
         if lumpdef[1] != "marker":
             # wf_ = Workfile
-            print(f'packing lump {opts["workdir"]}, {lumpdef}')
+            print(f'## Packing lump {opts["workdir"]}, {lumpdef}')
             wf_glob = doomglob.find_lump(opts["workdir"], lumpdef[0])
             wf_path = opts["workdir"] + '/' + \
                 os.path.dirname(wf_glob[0][1]) + \
