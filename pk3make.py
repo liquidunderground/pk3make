@@ -66,6 +66,10 @@ def build(makefile):
             srcfile = opts["srcdir"] + '/' + lump[1]
             destfile = opts["workdir"] + lump[2]
 
+            # Out-Of-Date check
+            if os.path.exists(destfile) and os.path.getmtime(srcfile) < os.path.getmtime(destfile):
+                continue
+
             bytedump = None
 
             match lumpdef[1]:
