@@ -128,6 +128,10 @@ class Picture():
 
     def set_offset(self, offset: str):
         import re
+        if offset == None:
+            self.offsetX = 0
+            self.offsetY = 0
+            return (self.offsetX, self.offsetY)
 
         tokens = re.match(r"\s+(-?[0-9]+)\s+(-?[0-9]+)\s*", offset)
         if tokens:
