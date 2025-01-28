@@ -55,7 +55,7 @@ def compile_palette(srcdir, workdir, lumpname):
 
 def build(makefile):
     from modules import doompic, doomglob
-    import shutil
+    import shutil, os
 
     opts = makefile.get_options()
 
@@ -97,11 +97,13 @@ def build(makefile):
                 case "udmf":
                     print(f'UDMF lumps conversion is currently not supported.')
                 case "raw":
-                    shutil.copy2(srcfile, destfile)
+                    with open(srcfile, mode='rb') as s:
+                        bytedump = s.read()
 
 
             if bytedump != None:
                 print(f'## Writing {lumpdef[1]} "{destfile}"')
+                os.makedirs(os.path.dirname(destfile), exist_ok=True)
                 with open(destfile, "wb") as ofile:
                     ofile.write(bytedump)
 
