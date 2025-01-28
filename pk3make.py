@@ -60,7 +60,7 @@ def build(makefile):
                 globlist = []
                 for f in lump_dcheck:
                     globlist.append(f[1])
-                raise DuplicateLumpError(f"Color palette {lumpname} is not unique.\n{globlist}")
+                raise doomglob.DuplicateLumpError(f"Lump {lump[0]} is not unique.\n{globlist}")
 
 
             srcfile = opts["srcdir"] + '/' + lump[1]
