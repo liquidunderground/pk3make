@@ -75,7 +75,32 @@ class Palette:
         return bytes(exbytes)
 
     def colormap_tobytes(self):
-        return
+        out = bytearray
+        for c,v in [(c,v) for c in range(256) for v in range(32)]:
+            # Simple RGB squash for now
+            # TODO: Add HSV/LAB-conversion after testing
+            brightness = ( \
+                            self.colors[c][0] * (1-((v+1)/32)), \
+                            self.colors[c][1] * (1-((v+1)/32)), \
+                            self.colors[c][2] * (1-((v+1)/32)), \
+                        )
+            out += self.rgb2index(tintcolor).to_bytes(1)
+        return out
+
+    def tinttab_tobytes(self, factor:float):
+        if type(factor) != float or not (0 <= factor <= 1):
+            raise RuntimeError(f"Invalid TINTTAB factor {factor}")
+
+        out = bytearray
+        for x,y in [(x,y) for x in range(256) for y in range(256)]:
+            tintcolor = ( \
+                            self.colors[x][0] * (1-factor) + self.colors[y][0] * factor, \
+                            self.colors[x][1] * (1-factor) + self.colors[y][1] * factor, \
+                            self.colors[x][2] * (1-factor) + self.colors[y][2] * factor \
+                        )
+            out += self.rgb2index(tintcolor).to_bytes(1)
+        return out
+
 
 class Flat():
     def __init__(self, pngfile: str, palette: Palette):
