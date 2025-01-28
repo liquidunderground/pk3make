@@ -106,7 +106,7 @@ def build(makefile):
 
 def pack(makefile):
     from modules import pk3zip, doomglob
-    import os
+    import os, pathlib
 
     opts = makefile.get_options()
     if opts["destfile"] == None:
@@ -119,20 +119,17 @@ def pack(makefile):
     print("# Packing")
 
     for lumpdef in makefile.get_lumpdefs():
-
-        if lumpdef[1] != "marker":
-            # wf_ = Workfile
-            print(f'## Packing lump {opts["workdir"]}, {lumpdef}')
-            wf_glob = doomglob.find_lump(opts["workdir"], lumpdef[0])
-            wf_path = opts["workdir"] + '/' + \
-                os.path.dirname(wf_glob[0][1]) + \
-                wf_glob[0][0]
-
         match lumpdef[1]:
             case "marker":
+                print(f"## Adding marker {lumpdef[0]}")
                 pk3zip.add_marker(lumpdef[0], opts["destfile"])
             case _:
-                pk3zip.copy_file("", opts["destfile"], lumpdef[0].stem[:8])
+                doomname = pathlib.Path(lumpdef[0]).stem[:8]
+                wf_glob = doomglob.find_lump(opts["workdir"], doomname)
+                for workfile in wf_glob:
+                    wf_path = opts["workdir"] + workfile[2]
+                    print(f'## Packing lump {workfile[2]}')
+                    pk3zip.copy_file(wf_path, opts["destfile"], workfile[2])
     return
 
 def main():
