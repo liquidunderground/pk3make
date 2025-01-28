@@ -13,12 +13,7 @@ def clean(workdir="build"):
 def prepare(workdir="build"):
     import os
     print("# Creating WORKDIR '{}'".format(workdir))
-    try:
-        os.mkdir(workdir)
-    except FileExistsError:
-        pass
-
-    return
+    os.makedirs(workdir, exist_ok=True)
 
 def cr_build_lump(lumpdef, playpal, srcfile,destfile, opts):
     import shutil,os
