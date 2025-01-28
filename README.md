@@ -17,6 +17,11 @@ To fully build your project akin to a makefile, simply type:
 
     ./pk3make.py make ./PK3Makefile # Default PK3Makefile
 
+### Tips
+
+- PK3Make will not find hidden files. To avoid `DuplicateLumpError`s, place
+  your workfiles in a hidden directory, for example `.local/`.
+
 
 ## But why?
 
