@@ -20,38 +20,6 @@ def prepare(workdir="build"):
 
     return
 
-def compile_palette(srcdir, workdir, lumpname):
-    from modules import doompic,doomglob
-    import os
-
-    print("## Loading main palette")
-    # Check for duplicates
-    palglob = doomglob.find_lump(srcdir, lumpname)
-
-    if len(palglob) > 1:
-        globlist = []
-        for f in palglob:
-            globlist.append(f[1])
-        raise DuplicateLumpError(f"Color palette {lumpname} is not unique.\n{globlist}")
-    elif len(palglob) < 1:
-        raise FileNotFoundError(f"Color palette {lumpname} not found.")
-
-
-    # Actually build the palette
-    pal = doompic.Palette(os.path.join(srcdir,palglob[0][1]))
-
-    if len(palglob) > 1:
-        raise DuplicateLumpError(f"Duplicate {palglob}")
-
-    dest = workdir + '/' + \
-        os.path.dirname(palglob[0][1]) + \
-        palglob[0][0]
-
-
-    print(f'## Writing palette "{dest}"')
-    with open(dest, "wb") as ofile:
-        ofile.write(pal.tobytes())
-    return pal
 
 def build(makefile):
     from modules import doompic, doomglob
@@ -62,8 +30,21 @@ def build(makefile):
     if opts["palette"] == None:
         print("WARNING: Default color palette is not defined. Compiling graphics will lead to errors.")
 
-    playpal = compile_palette(opts["srcdir"], opts["workdir"], opts["palette"])
+    #playpal = compile_palette(opts["srcdir"], opts["workdir"], opts["palette"])
 
+    pp_glob = doomglob.find_lump(opts["srcdir"], opts["palette"])
+
+    if len(pp_glob) > 1:
+        globlist = []
+        for f in pp_glob:
+            globlist.append(f[1])
+        raise doomglob.DuplicateLumpError(f"Color palette {lumpname} is not unique.\n{globlist}")
+    elif len(pp_glob) < 1:
+        raise FileNotFoundError(f"Color palette {lumpname} not found.")
+
+    playpal = doompic.Palette(os.path.join(opts["srcdir"],pp_glob[0][1]))
+
+    # ======== #
 
     for lumpdef in makefile.get_lumpdefs():
 
@@ -96,6 +77,10 @@ def build(makefile):
                     bytedump = doompic.Flat(srcfile, playpal).tobytes()
                 case "udmf":
                     print(f'UDMF lumps conversion is currently not supported.')
+                case "palette":
+                    print(f'## Loading palette "{srcfile}"')
+                    pal = playpal if lumpdef[0] == opts["palette"] else pal
+                    bytedump = pal.tobytes()
                 case "raw":
                     with open(srcfile, mode='rb') as s:
                         bytedump = s.read()
