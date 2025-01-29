@@ -145,6 +145,10 @@ def pack(makefile):
         print(f'# Creating directory {os.path.dirname(opts["destfile"])}')
         os.mkdir(os.path.dirname(opts["destfile"]))
 
+    if os.path.isfile(opts["destfile"]):
+        print(f'## Deleting {opts["destfile"]} for recreation')
+        os.remove(opts["destfile"])
+
     print("# Packing")
 
     for lumpdef in makefile.get_lumpdefs():
