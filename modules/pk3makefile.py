@@ -30,17 +30,14 @@ class PK3Makefile():
                 re_buildopt = r"^\?([^\s]*): ([^\s]*)"
                 re_lumpdef = r"^([^\s]+)\s*([^\s]+)(?:\s*(.+))?"
 
-                print(f'LINE {line}')
                 workline = re.sub(r"#.*","", line) # Clean out comments
                 tokens = re.match(re_buildopt, workline)
                 if tokens: # Is it a Buildopt?
-                    print(f'BUIlOPT MATCH')
                     match tokens.group(1):
                         case "srcdir" | "workdir" | "destfile" | "palette" as cmd:
                             self.options[cmd] = tokens.group(2)
                 tokens = re.match(re_lumpdef, workline)
                 if tokens: # Is it a Lumpdef?
-                    print(f'LUMPDEF MATCH')
                     match tokens.group(2):
                         case "flat" | "fade" | "graphic" | "raw" | "colormap"| "tinttab" | "palette" | "marker" as cmd:
                             self.lumps.append( tokens.group(1,2,3) )
@@ -48,7 +45,6 @@ class PK3Makefile():
                             print(f'Lump type "udmf" is not supported yet. Ignored')
                         case _ as lumptype:
                             print(f'Invalid lumptype "{lumptype}". Ignored')
-
 
     def get_options(self, option=None):
         if option == None:
