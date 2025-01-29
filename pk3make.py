@@ -15,71 +15,94 @@ def prepare(workdir="build"):
     print("# Creating WORKDIR '{}'".format(workdir))
     os.makedirs(workdir, exist_ok=True)
 
-def cr_build_lump(lumpdef, playpal, srcfile,destfile, opts):
+def cr_build_lump(lock, lumpdef, context):
     import shutil,os
     from modules import doompic
 
     bytedump = None
 
+    print(f'Building {lumpdef[1]} "{context["srcfile"]}"...')
+
     match lumpdef[1]:
         case "graphic":
-            print(f'Converting Picture "{srcfile}"...')
-            bytedump = doompic.Picture(srcfile, playpal, offset=lumpdef[2]).tobytes()
+            print(f'Converting Picture "{context["srcfile"]}"...')
+            bytedump = doompic.Picture(context['srcfile'], context["playpal"], offset=lumpdef[2]).tobytes()
         case "flat" | "fade":
-            print(f'Converting Flat "{srcfile}"...')
-            bytedump = doompic.Flat(srcfile, playpal).tobytes()
+            print(f'Converting Flat "{context["srcfile"]}"...')
+            bytedump = doompic.Flat(context['srcfile'], context["playpal"]).tobytes()
         case "udmf":
             print(f'UDMF lumps conversion is currently not supported.')
         case "palette":
-            print(f'## Loading palette "{srcfile}"')
-            pal = playpal if lumpdef[0] == opts["palette"] else pal
+            print(f'## Loading palette "{context['srcfile']}"')
+            pal = get_palette(lock, lumpdef[0], context["opts"], context["pdict"])
+            print(f'## Dumping palette "{context["srcfile"]}"')
             bytedump = pal.tobytes()
+        case "tinttab" | "colormap" as paltype:
+            palparams = re.match(r"\s*([A-Ta-z0-9./\\]+)\s*([0-9]\.[0-9]f?)?", lumpdef[2])
+            print(f'## Dumping {paltype} "{context["srcfile"]}"')
+            pal = get_palette(lock, palparams.groups(1), context["opts"], context["pdict"])
+            match paltype:
+                case "tinttab":
+                    palweight = float(palparams.groups(2))
+                    bytedump = pal.tinttab_tobytes(palweight)
+                case "colormap":
+                    bytedump = pal.colormap_tobytes()
         case "raw":
-            with open(srcfile, mode='rb') as s:
+            with open(context['srcfile'], mode='rb') as s:
                 bytedump = s.read()
 
     if bytedump != None:
-        print(f'## Writing {lumpdef[1]} "{destfile}"')
-        os.makedirs(os.path.dirname(destfile), exist_ok=True)
-        with open(destfile, "wb") as ofile:
-            ofile.write(bytedump)
+        print(f'## Writing {lumpdef[1]} "{context["destfile"]}"')
+        os.makedirs(os.path.dirname(context["destfile"]), exist_ok=True)
+        with lock:
+            with open(context["destfile"], "wb") as ofile:
+                ofile.write(bytedump)
+
+def get_palette(lock, lumpname, opts, pdict):
+    from modules import doompic, doomglob
+    import os
+
+    p_glob = doomglob.find_lump(opts["srcdir"], lumpname)
+
+    if len(p_glob) > 1:
+        globlist = []
+        for f in p_glob:
+            globlist.append(f[1])
+        raise doomglob.DuplicateLumpError(f"Color palette {lumpname} is not unique.\n{globlist}")
+    elif len(p_glob) < 1:
+        raise FileNotFoundError(f"Color palette {lumpname} not found.")
+
+    with lock:
+        pdict[lumpname] = pdict.get(lumpname, \
+            doompic.Palette(os.path.join(opts["srcdir"],p_glob[0][1])) )
+    return pdict[lumpname] 
 
 
 def build(makefile):
     from modules import doompic, doomglob
     import shutil, os
-    import asyncio, concurrent.futures
+    import asyncio, concurrent.futures, multiprocessing
 
     opts = makefile.get_options()
+    palettes = {}
+
+    print(f'# Building {opts["srcdir"]} => {opts["workdir"]}')
 
     if opts["palette"] == None:
         print("WARNING: Default color palette is not defined. Compiling graphics will lead to errors.")
 
-    #playpal = compile_palette(opts["srcdir"], opts["workdir"], opts["palette"])
+    ppx_man = multiprocessing.Manager()
+    ppx_lock = ppx_man.Lock()
+    ppx_futures = []
 
-    pp_glob = doomglob.find_lump(opts["srcdir"], opts["palette"])
-
-    if len(pp_glob) > 1:
-        globlist = []
-        for f in pp_glob:
-            globlist.append(f[1])
-        raise doomglob.DuplicateLumpError(f"Color palette {lumpname} is not unique.\n{globlist}")
-    elif len(pp_glob) < 1:
-        raise FileNotFoundError(f"Color palette {lumpname} not found.")
-
-    playpal = doompic.Palette(os.path.join(opts["srcdir"],pp_glob[0][1]))
-
-    # ======== #
+    playpal = get_palette(ppx_lock, opts["palette"], opts, palettes)
 
     with concurrent.futures.ProcessPoolExecutor() as ppx:
 
         for lumpdef in makefile.get_lumpdefs():
 
             lumpglob = doomglob.find_lump(opts["srcdir"], lumpdef[0])
-            print (f"DOOMGLOB FIND : {lumpglob}")
-
             for lump in lumpglob:
-
                 lump_dcheck = doomglob.find_lump(opts["srcdir"], lump[0])
 
                 # Error check
@@ -96,7 +119,18 @@ def build(makefile):
                 # Out-Of-Date check
                 if os.path.exists(destfile) and os.path.getmtime(srcfile) < os.path.getmtime(destfile):
                     continue
-                ppx.submit(cr_build_lump,  lumpdef, playpal, srcfile,destfile, opts)
+                ppx_context = {
+                    "playpal" :  playpal,
+                    "srcfile" :  srcfile,
+                    "destfile" :  destfile,
+                    "opts" :  opts,
+                    "pdict": palettes,
+                    }
+                ppx_futures.append( ppx.submit(cr_build_lump, ppx_lock, lumpdef, ppx_context ) )
+
+        # Did anything actually work?
+        for f in ppx_futures:
+            result = f.result()
     return
 
 def pack(makefile):
