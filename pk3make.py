@@ -21,25 +21,27 @@ def cr_build_lump(lock, lumpdef, context):
 
     bytedump = None
 
-    print(f'Building {lumpdef[1]} "{context["srcfile"]}"...')
+    print(f'## Building {lumpdef[1]} "{context["srcfile"]}"...')
 
     match lumpdef[1]:
         case "graphic":
             print(f'Converting Picture "{context["srcfile"]}"...')
-            bytedump = doompic.Picture(context['srcfile'], context["playpal"], offset=lumpdef[2]).tobytes()
+            pal = get_palette(lock, context["opts"]["palette"], context["opts"], context["pdict"])
+            bytedump = doompic.Picture(context['srcfile'], pal, offset=lumpdef[2]).tobytes()
         case "flat" | "fade":
             print(f'Converting Flat "{context["srcfile"]}"...')
-            bytedump = doompic.Flat(context['srcfile'], context["playpal"]).tobytes()
+            pal = get_palette(lock, context["opts"]["palette"], context["opts"], context["pdict"])
+            bytedump = doompic.Flat(context['srcfile'], pal).tobytes()
         case "udmf":
             print(f'UDMF lumps conversion is currently not supported.')
         case "palette":
-            print(f'## Loading palette "{context['srcfile']}"')
+            print(f'Loading palette "{context['srcfile']}"')
             pal = get_palette(lock, lumpdef[0], context["opts"], context["pdict"])
-            print(f'## Dumping palette "{context["srcfile"]}"')
+            print(f'Dumping palette "{context["srcfile"]}"')
             bytedump = pal.tobytes()
         case "tinttab" | "colormap" as paltype:
             palparams = re.match(r"\s*([A-Ta-z0-9./\\]+)\s*([0-9]\.[0-9]f?)?", lumpdef[2])
-            print(f'## Dumping {paltype} "{context["srcfile"]}"')
+            print(f'Dumping {paltype} "{context["srcfile"]}" with {palparams.groups(1,2)}')
             pal = get_palette(lock, palparams.groups(1), context["opts"], context["pdict"])
             match paltype:
                 case "tinttab":
@@ -52,7 +54,7 @@ def cr_build_lump(lock, lumpdef, context):
                 bytedump = s.read()
 
     if bytedump != None:
-        print(f'## Writing {lumpdef[1]} "{context["destfile"]}"')
+        print(f'Writing {lumpdef[1]} "{context["destfile"]}"')
         os.makedirs(os.path.dirname(context["destfile"]), exist_ok=True)
         with lock:
             with open(context["destfile"], "wb") as ofile:
@@ -73,8 +75,9 @@ def get_palette(lock, lumpname, opts, pdict):
         raise FileNotFoundError(f"Color palette {lumpname} not found.")
 
     with lock:
-        pdict[lumpname] = pdict.get(lumpname, \
-            doompic.Palette(os.path.join(opts["srcdir"],p_glob[0][1])) )
+        if not lumpname in pdict:
+            print(f'Caching Palette "{lumpname}"')
+            pdict[lumpname] = doompic.Palette(os.path.join(opts["srcdir"],p_glob[0][1]))
     return pdict[lumpname] 
 
 
@@ -84,7 +87,6 @@ def build(makefile):
     import asyncio, concurrent.futures, multiprocessing
 
     opts = makefile.get_options()
-    palettes = {}
 
     print(f'# Building {opts["srcdir"]} => {opts["workdir"]}')
 
@@ -93,9 +95,8 @@ def build(makefile):
 
     ppx_man = multiprocessing.Manager()
     ppx_lock = ppx_man.Lock()
+    palettes = ppx_man.dict()
     ppx_futures = []
-
-    playpal = get_palette(ppx_lock, opts["palette"], opts, palettes)
 
     with concurrent.futures.ProcessPoolExecutor() as ppx:
 
@@ -120,7 +121,6 @@ def build(makefile):
                 if os.path.exists(destfile) and os.path.getmtime(srcfile) < os.path.getmtime(destfile):
                     continue
                 ppx_context = {
-                    "playpal" :  playpal,
                     "srcfile" :  srcfile,
                     "destfile" :  destfile,
                     "opts" :  opts,
