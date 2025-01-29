@@ -83,6 +83,7 @@ def get_palette(lock, lumpname, opts, pdict):
 
 def build(makefile):
     from modules import doompic, doomglob
+    from natsort import natsorted
     import shutil, os
     import asyncio, concurrent.futures, multiprocessing
 
@@ -135,6 +136,7 @@ def build(makefile):
 
 def pack(makefile):
     from modules import pk3zip, doomglob
+    from natsort import natsorted
     import os, pathlib
 
     opts = makefile.get_options()
@@ -159,7 +161,7 @@ def pack(makefile):
             case _:
                 doomname = pathlib.Path(lumpdef[0]).stem[:8]
                 wf_glob = doomglob.find_lump(opts["workdir"], doomname)
-                for workfile in sorted(wf_glob, key=lambda tup: tup[0]):
+                for workfile in natsorted(wf_glob, key=lambda tup: tup[0]):
                     wf_path = opts["workdir"] + workfile[2]
                     print(f'## Packing lump {workfile[2]}')
                     pk3zip.copy_file(wf_path, opts["destfile"], workfile[2])
