@@ -82,9 +82,9 @@ class Palette:
             brightness = ( \
                             self.colors[c][0] * (1-((v+1)/32)), \
                             self.colors[c][1] * (1-((v+1)/32)), \
-                            self.colors[c][2] * (1-((v+1)/32)), \
+                            self.colors[c][2] * (1-((v+1)/32)) \
                         )
-            out += self.rgb2index(tintcolor).to_bytes(1)
+            out += self.rgb2index(brightness).to_bytes(1)
         return out
 
     def tinttab_tobytes(self, factor:float):
