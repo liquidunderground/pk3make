@@ -16,7 +16,7 @@ def prepare(workdir="build"):
     os.makedirs(workdir, exist_ok=True)
 
 def cr_build_lump(lock, lumpdef, context):
-    import shutil,os
+    import shutil,os,re
     from modules import doompic
 
     bytedump = None
@@ -40,12 +40,12 @@ def cr_build_lump(lock, lumpdef, context):
             print(f'Dumping palette "{context["srcfile"]}"')
             bytedump = pal.tobytes()
         case "tinttab" | "colormap" as paltype:
-            palparams = re.match(r"\s*([A-Ta-z0-9./\\]+)\s*([0-9]\.[0-9]f?)?", lumpdef[2])
-            print(f'Dumping {paltype} "{context["srcfile"]}" with {palparams.groups(1,2)}')
-            pal = get_palette(lock, palparams.groups(1), context["opts"], context["pdict"])
+            palparams = re.match(r"\s*([\w]+)\s*([0-9]\.[0-9]f?)?", lumpdef[2])
+            pal = get_palette(lock, palparams.group(1), context["opts"], context["pdict"])
+            print(f'Generating {paltype} "{context["destfile"]}" with {palparams.group(1,2)}')
             match paltype:
                 case "tinttab":
-                    palweight = float(palparams.groups(2))
+                    palweight = float(palparams.group(2))
                     bytedump = pal.tinttab_tobytes(palweight)
                 case "colormap":
                     bytedump = pal.colormap_tobytes()
@@ -85,7 +85,7 @@ def get_palette(lock, lumpname, opts, pdict):
 def build(makefile):
     from modules import doompic, doomglob
     from natsort import natsorted
-    import shutil, os
+    import shutil, os, re
     import asyncio, concurrent.futures, multiprocessing
 
     opts = makefile.get_options()
@@ -103,8 +103,13 @@ def build(makefile):
     with concurrent.futures.ThreadPoolExecutor() as ppx:
 
         for lumpdef in makefile.get_lumpdefs():
+            match lumpdef[1]:
+                case "colormap" | "tinttab" as ltype: # Hardcoded exceptions, eww
+                    lumpglob = doomglob.fake_lump(lumpdef[0])
+                case _:
+                    lumpglob = doomglob.find_lump(opts["srcdir"], lumpdef[0])
 
-            lumpglob = doomglob.find_lump(opts["srcdir"], lumpdef[0])
+
             for lump in natsorted(lumpglob, key=lambda l: l[0]):
                 lump_dcheck = doomglob.find_lump(opts["srcdir"], lump[0])
 
@@ -112,6 +117,11 @@ def build(makefile):
                 destfile = opts["workdir"] + lump[2]
 
                 # Out-Of-Date check
+                if lumpdef[1] in ["colormap", "tinttab"]:
+                    palbase_name = re.match(r"\s*([\w]+)\s*", lumpdef[2]).group(1)
+                    ood_target = doomglob.find_lump(opts["srcdir"],palbase_name)
+                    srcfile = opts["srcdir"] + '/' + ood_target[0][1]
+
                 if os.path.exists(destfile) and os.path.getmtime(srcfile) < os.path.getmtime(destfile):
                     continue
                 ppx_context = {
@@ -121,6 +131,7 @@ def build(makefile):
                     "pdict": palettes,
                     }
                 ppx_futures.append( ppx.submit(cr_build_lump, ppx_lock, lumpdef, ppx_context ) )
+                #cr_build_lump(ppx_lock, lumpdef, ppx_context ) # For testing single-threadedly
 
         # Did anything actually work?
         for f in ppx_futures:

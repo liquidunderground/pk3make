@@ -60,9 +60,6 @@ class Palette:
                 (color[0]-icolor['r'])**2 + \
                 (color[1]-icolor['g'])**2 + \
                 (color[2]-icolor['b'])**2 \
-                #(pow(color[0],2)-pow(icolor['r'],2) + \
-                #(pow(color[1],2)-pow(icolor['g'],2) + \
-                #(pow(color[2],2)-pow(icolor['b'],2) \
             )**(1/2)
             if delta_e < min_delta_e:
                 min_delta_e = delta_e
@@ -115,8 +112,9 @@ class Palette:
         from colormath.color_conversions import convert_color
         """
 
-        out = bytearray
-        for c,v in [(c,v) for c in range(256) for v in range(32)]:
+        out = bytearray()
+        # Y/X coordinate loop because loop order matters
+        for c,v in [(c,v) for v in range(32) for c in range(256)]:
 
             """
             input_hsv = convert_color( sRGBColor( \
@@ -133,9 +131,9 @@ class Palette:
             # Simple RGB squash for now
             # TODO: Add HSV/LAB-conversion after testing
             brightness = ( \
-                            self.colors[c][0] * (1-((v+1)/32)), \
-                            self.colors[c][1] * (1-((v+1)/32)), \
-                            self.colors[c][2] * (1-((v+1)/32)) \
+                            self.colors[c]["r"] * (1-(v/32)), \
+                            self.colors[c]["g"] * (1-(v/32)), \
+                            self.colors[c]["b"] * (1-(v/32)) \
                         )
             out += self.rgb2index(brightness).to_bytes(1)
         return out
@@ -144,12 +142,12 @@ class Palette:
         if type(factor) != float or not (0 <= factor <= 1):
             raise RuntimeError(f"Invalid TINTTAB factor {factor}")
 
-        out = bytearray
+        out = bytearray()
         for x,y in [(x,y) for x in range(256) for y in range(256)]:
             tintcolor = ( \
-                            self.colors[x][0] * (1-factor) + self.colors[y][0] * factor, \
-                            self.colors[x][1] * (1-factor) + self.colors[y][1] * factor, \
-                            self.colors[x][2] * (1-factor) + self.colors[y][2] * factor \
+                            self.colors[x]["r"] * (1-factor) + self.colors[y]["r"] * factor, \
+                            self.colors[x]["g"] * (1-factor) + self.colors[y]["g"] * factor, \
+                            self.colors[x]["b"] * (1-factor) + self.colors[y]["b"] * factor \
                         )
             out += self.rgb2index(tintcolor).to_bytes(1)
         return out
