@@ -153,7 +153,7 @@ class Picture():
 
     def set_offset(self, offset: str):
         import re
-        if offset == None or re.match("\s*", offset):
+        if offset == None or re.match(r"\s*", offset):
             self.offsetX = 0
             self.offsetY = 0
             return (self.offsetX, self.offsetY)
