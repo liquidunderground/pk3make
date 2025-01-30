@@ -43,13 +43,15 @@ modules needed to be written from scratch for PK3Make, Python's vast
 standard library and otherwise mature PyPI repository helped stem some
 of the heavy lifting for things such as image processing.
 
-# Weissblatt-flavored METAINFO reference
+# PK3Makefile reference
 
-PK3Make uses it's own build definition language, inspired by the
-`METAINFO` spec from
+PK3Make uses it's own build definition language called `PK3Makefile`, inspired by the `METAINFO` spec from
 [Matt Tropiano's dImgConv](https://mtrop.github.io/DoomTools/dimgconv.html).
-By default, PK3Make will attempt to load the file
-Per-line, every character after `#` is treated as a comment.
+
+`PK3Makefile`s are processed line-by-line with everything following `#`
+being treated as a comment. Otherwise it is split into *Build Options*,
+which define PK3Make's general behavior and *LUMPDEFS*, which define what
+files to put into your PK3 and how to build them.
 
 ## Build options
 
