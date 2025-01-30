@@ -1,0 +1,41 @@
+# === Example PK3Makefile ===
+#
+# This is a simple example PK3Makefile, more meant to demonstrate what you
+# can do with the format than actually being useful. 
+#
+# Use this for reference when writing your own.
+
+# --- Build options ---
+#
+# These are your general project options.
+# Please note that PK3Make will attempt to replicate
+# the file tree in your ?srcdir as needed
+#
+
+?srcdir: src # Base file tree where your PNGs, OGGs, etc. are.
+?workdir: build # Working directory to store compiled files. Useful for Out-Of-Date checking and debugging
+?palette: PLAYPAL # Conventionally PLAYPAL. For use w/ graphics/flats/fades. Used as a basis for COLORMAPs and TINTTABs
+?destfile: bin/whatever.pk3
+
+
+# --- LUMPDEFs ---
+#
+# LUMPDEFs are read sequentially, so take care where to
+# place your "marker" types. The engine will break if you don't.
+#
+# Although you will need a palette in your ?srcdir,
+# "palette" types will be dumped into your PK3.
+# To define a default palette for your graphics, use ?palette
+
+PLAYPAL palette
+PAL* palette
+CLM0031 colormap PAL0031
+COLORMAP colormap PLAYPAL
+TRANS50 tinttab PAL0031 0.5
+D_*.mid raw
+/Music/S_DIGITL marker
+O_*.ogg raw
+NUMSPR* graphic sprite
+NUMFLT* flat
+FADE* fade # For now they're flats, let's see if the engine cares
+Maps/MAP* udmf # unsupported, use compiled WADs w/ "raw" for now
