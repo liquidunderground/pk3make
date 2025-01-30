@@ -25,17 +25,17 @@ def cr_build_lump(lock, lumpdef, context):
 
     match lumpdef[1]:
         case "graphic":
-            print(f'Converting Picture "{context["srcfile"]}"...')
             pal = get_palette(lock, context["opts"]["palette"], context["opts"], context["pdict"])
+            print(f'Converting Picture "{context["srcfile"]}"...')
             bytedump = doompic.Picture(context['srcfile'], pal, offset=lumpdef[2]).tobytes()
         case "flat" | "fade":
-            print(f'Converting Flat "{context["srcfile"]}"...')
             pal = get_palette(lock, context["opts"]["palette"], context["opts"], context["pdict"])
+            print(f'Converting Flat "{context["srcfile"]}"...')
             bytedump = doompic.Flat(context['srcfile'], pal).tobytes()
         case "udmf":
             print(f'UDMF lumps conversion is currently not supported.')
         case "palette":
-            print(f'Loading palette "{context['srcfile']}"')
+            print(f'Loading palette "{context["srcfile"]}"')
             pal = get_palette(lock, lumpdef[0], context["opts"], context["pdict"])
             print(f'Dumping palette "{context["srcfile"]}"')
             bytedump = pal.tobytes()
@@ -64,20 +64,21 @@ def get_palette(lock, lumpname, opts, pdict):
     from modules import doompic, doomglob
     import os
 
-    p_glob = doomglob.find_lump(opts["srcdir"], lumpname)
+    lock.acquire()
+    if not lumpname in pdict:
 
-    if len(p_glob) > 1:
-        globlist = []
-        for f in p_glob:
-            globlist.append(f[1])
-        raise doomglob.DuplicateLumpError(f"Color palette {lumpname} is not unique.\n{globlist}")
-    elif len(p_glob) < 1:
-        raise FileNotFoundError(f"Color palette {lumpname} not found.")
+        p_glob = doomglob.find_lump(opts["srcdir"], lumpname)
+        if len(p_glob) > 1:
+            globlist = []
+            for f in p_glob:
+                globlist.append(f[1])
+            raise doomglob.DuplicateLumpError(f"Color palette {lumpname} is not unique.\n{globlist}")
+        elif len(p_glob) < 1:
+            raise FileNotFoundError(f"Color palette {lumpname} not found.")
 
-    with lock:
-        if not lumpname in pdict:
-            print(f'Caching Palette "{lumpname}"')
-            pdict[lumpname] = doompic.Palette(os.path.join(opts["srcdir"],p_glob[0][1]))
+        print(f'Caching Palette "{lumpname}"')
+        pdict[lumpname] = doompic.Palette(os.path.join(opts["srcdir"],p_glob[0][1]))
+    lock.release()
     return pdict[lumpname] 
 
 
@@ -99,21 +100,13 @@ def build(makefile):
     palettes = ppx_man.dict()
     ppx_futures = []
 
-    with concurrent.futures.ProcessPoolExecutor() as ppx:
+    with concurrent.futures.ThreadPoolExecutor() as ppx:
 
         for lumpdef in makefile.get_lumpdefs():
 
             lumpglob = doomglob.find_lump(opts["srcdir"], lumpdef[0])
             for lump in natsorted(lumpglob, key=lambda l: l[0]):
                 lump_dcheck = doomglob.find_lump(opts["srcdir"], lump[0])
-
-                # Error check
-                if len(lump_dcheck) > 1:
-                    globlist = []
-                    for f in lump_dcheck:
-                        globlist.append(f[1])
-                    raise doomglob.DuplicateLumpError(f"Lump {lump[0]} is not unique.\n{globlist}")
-
 
                 srcfile = opts["srcdir"] + '/' + lump[1]
                 destfile = opts["workdir"] + lump[2]
