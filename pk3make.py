@@ -104,7 +104,7 @@ def build(makefile):
         for lumpdef in makefile.get_lumpdefs():
 
             lumpglob = doomglob.find_lump(opts["srcdir"], lumpdef[0])
-            for lump in lumpglob:
+            for lump in natsorted(lumpglob, key=lambda l: l[0]):
                 lump_dcheck = doomglob.find_lump(opts["srcdir"], lump[0])
 
                 # Error check
