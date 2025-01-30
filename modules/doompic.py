@@ -5,6 +5,13 @@ class Palette:
         from modules.doomglob import find_lump, DuplicateLumpError
         from PIL import Image
 
+        # Colormath-based code commented out for future reference
+        # Euclidean distance is 50x faster
+        """
+        from colormath2.color_objects import sRGBColor, LabColor
+        from colormath2.color_conversions import convert_color
+        from colormath2.color_diff import delta_e_cie2000
+        """
 
         with Image.open(filename).convert("RGB") as img:
             # When it don't fit we make it fit
@@ -15,23 +22,51 @@ class Palette:
             for y in range(height):
                 for x in range(width):
                     pixel = rez_i.getpixel((x,y))
-                    self.colors.append(pixel) # Tuple (R,G,B)
+                    #self.colors.append(pixel) # Tuple (R,G,B)
+
+                    # Precalc color conversions to speed up rgb2index - UPDATE: No bc fuck colormath
+                    #px_srgb = sRGBColor(pixel[0], pixel[1], pixel[2], is_upscaled=True) # COLORMATH STUB
+                    #px_cielab = convert_color(px_srgb, LabColor) # COLORMATH STUB
+                    color_o = {
+                        "id": y*height+x,
+                        #"rgb": px_srgb, # COLORMATH STUB
+                        "r": pixel[0],
+                        "g": pixel[1],
+                        "b": pixel[2],
+                        #"cielab": px_cielab, # COLORMATH STUB
+                    }
+                    self.colors.append(color_o) # Tuple (R,G,B)
 
     def rgb2index(self, color: tuple):
+        # Colormath-based code commented out for future reference
+        # Euclidean distance is 50x faster
+        """
         from colormath2.color_objects import sRGBColor, LabColor
         from colormath2.color_conversions import convert_color
         from colormath2.color_diff import delta_e_cie2000
+        """
 
-        color_lab = convert_color(sRGBColor(color[0], color[1], color[2], is_upscaled=True), LabColor)
+        #color_lab = convert_color(sRGBColor(color[0], color[1], color[2], is_upscaled=True), LabColor)
         min_delta_e = float('inf')
-        min_idx = int
-        for index,icolor in enumerate(self.colors):
+        min_idx = -1
+        for icolor in self.colors:
+            """
             #print(f"ICOLOR {index}: {icolor}")
-            icolor_lab = convert_color(sRGBColor(icolor[0], icolor[1], icolor[2], is_upscaled=True), LabColor)
-            delta_e = delta_e_cie2000(color_lab, icolor_lab)
+            #icolor_lab = convert_color(sRGBColor(icolor[0], icolor[1], icolor[2], is_upscaled=True), LabColor)
+            delta_e = delta_e_cie2000(color_lab, icolor["cielab"])
+            """
+            # Simple euclidean distance
+            delta_e = ( \
+                (color[0]-icolor['r'])**2 + \
+                (color[1]-icolor['g'])**2 + \
+                (color[2]-icolor['b'])**2 \
+                #(pow(color[0],2)-pow(icolor['r'],2) + \
+                #(pow(color[1],2)-pow(icolor['g'],2) + \
+                #(pow(color[2],2)-pow(icolor['b'],2) \
+            )**(1/2)
             if delta_e < min_delta_e:
                 min_delta_e = delta_e
-                min_idx = index
+                min_idx = icolor["id"]
             if delta_e == 0: # Exact match, no need to continue
                 break
         #print(f"Found color {min_idx}:{self.colors[min_idx]} for image color {color}")
@@ -45,28 +80,28 @@ class Palette:
         # Return as IOBytes for saving
         exbytes = bytearray()
         for page in range(14):
-            for i in range(256):
+            for i,pcolor in enumerate(self.colors):
                 # Default unused palette: Grayscale
                 r = 255-i
                 g = 255-i
                 b = 255-i
 
                 if page == 0: # Regular palette
-                    r = self.colors[i][0]
-                    g = self.colors[i][1]
-                    b = self.colors[i][2]
+                    r = pcolor["r"]
+                    g = pcolor["g"]
+                    b = pcolor["b"]
                 elif 0 < page < 4: # Whiteout palettes => 75% white tint
-                    r = self.colors[i][0] + (255 - self.colors[i][0]) * 0.75
-                    g = self.colors[i][1] + (255 - self.colors[i][1]) * 0.75
-                    b = self.colors[i][2] + (255 - self.colors[i][2]) * 0.75
+                    r = pcolor["r"] + (255 - pcolor["r"]) * 0.75
+                    g = pcolor["g"] + (255 - pcolor["g"]) * 0.75
+                    b = pcolor["b"] + (255 - pcolor["b"]) * 0.75
                 elif page == 4: # Nuke palette => 75% white tint + g,b = 113
-                    r = self.colors[i][0] + (255 - self.colors[i][0]) * 0.75
+                    r = pcolor["r"] + (255 - pcolor["r"]) * 0.75
                     g = 113
                     b = 113
                 elif page == 5: # Inverted palette at 75% brightness
-                    r = (255 - self.colors[i][0]) * 0.75
-                    g = (255 - self.colors[i][1]) * 0.75
-                    b = (255 - self.colors[i][2]) * 0.75
+                    r = (255 - pcolor["r"]) * 0.75
+                    g = (255 - pcolor["g"]) * 0.75
+                    b = (255 - pcolor["b"]) * 0.75
                 # Add color idx.
                 # NOTE: the int() cast is janky but hopefully works
                 exbytes.append(int(r))
@@ -75,8 +110,26 @@ class Palette:
         return bytes(exbytes)
 
     def colormap_tobytes(self):
+        """
+        from colormath.color_objects import HSVColor, sRGBColor
+        from colormath.color_conversions import convert_color
+        """
+
         out = bytearray
         for c,v in [(c,v) for c in range(256) for v in range(32)]:
+
+            """
+            input_hsv = convert_color( sRGBColor( \
+                        self.colors[c][0], \
+                        self.colors[c][1], \
+                        self.colors[c][2] \
+                    , HSVColor)
+            output_hsv = ( input_hsv[0], input_hsv[1], input_hsv[2] * (1-v/32) )
+            output_rgb = sRGBColor()
+
+            out += self.rgb2index(output_rgb.value_tuple())
+            """
+
             # Simple RGB squash for now
             # TODO: Add HSV/LAB-conversion after testing
             brightness = ( \
