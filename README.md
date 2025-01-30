@@ -21,6 +21,9 @@ To fully build your project akin to a makefile, simply type:
 
 - PK3Make will not find hidden files. To avoid `DuplicateLumpError`s, place
   your workfiles in a hidden directory, for example `.local/`.
+- Should your project contain custom palettes,  place it's corresponding
+  LUMPDEF before any `graphic`, `flat` or `fade`. That way, PK3Make can
+  cache your palettes and speed up build times by reducing thread idle.
 
 
 ## But why?
