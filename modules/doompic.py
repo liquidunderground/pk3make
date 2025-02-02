@@ -262,7 +262,7 @@ class Picture():
         t_fseek = len(out) + 4 * self.width # whXY + column TOC
         for x in range(self.width):
             t_cdata = bytearray() # Column data
-            t_pdata = bytearray() # Post data
+            t_pdata = bytearray() # Setup/Reset Post data
             t_insidepost = False
             t_topdelta = 0
             t_postheight = 0
@@ -270,15 +270,16 @@ class Picture():
                 # Yes. Doom pictures partition their columns into posts
                 #print(f"Current Pixel ({x},{y}): {self.pixelbuf[y*self.width+x]}")
                 current_pixel = self.pixelbuf[y*self.width+x]
-                if current_pixel == -1 and t_insidepost: # Column END
+                if ( current_pixel == -1 or y%255 >= 254 ) and t_insidepost: # Post END
                     t_cdata.extend(t_postheight.to_bytes(1, byteorder="little")) # Unused padding
                     t_cdata.extend(b'\x00') # Unused padding
                     t_cdata.extend(t_pdata) # Post data
                     t_cdata.extend(b'\x00') # Unused padding
-                    t_cdata.extend(b'\xff') # Terminator
+                    #t_cdata.extend(b'\xff') # Column Terminator
+                    t_pdata = bytearray() # Reset post data
                     t_insidepost = False
-                elif current_pixel != -1 and not t_insidepost: # Column START
-                    t_topdelta = y
+                elif current_pixel != -1 and not t_insidepost: # Post START
+                    t_topdelta = y % 255 # Format seems to rely on overflow
                     t_postheight = 1
                     t_cdata.extend(t_topdelta.to_bytes(1, byteorder="little"))
                     t_pdata.extend(current_pixel.to_bytes(1, byteorder="little"))
@@ -292,7 +293,7 @@ class Picture():
                 t_cdata.extend(b'\x00') # Unused padding
                 t_cdata.extend(t_pdata) # Post data
                 t_cdata.extend(b'\x00') # Unused padding
-                t_cdata.extend(b'\xff') # Terminator
+            t_cdata.extend(b'\xff') # Column Terminator
 
             columns.extend(t_cdata) # Save partitioned column whole
 
