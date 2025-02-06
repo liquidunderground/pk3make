@@ -240,11 +240,13 @@ class Picture():
         # uint16_t LE offsetY
         # uint32_t[width] LE toc
         # -----------------------------
-        # [COLUMN]
-        # uint8_t LE width
-        # uint8_t LE width
-        # uint8_t LE width
-        # uint8_t LE width
+        # COLUMNS are arrays of POSTS separated by 0xFF
+        # [POSTS]
+        # uint8_t LE topdelta
+        # uint8_t LE length
+        # uint8_t LE padding
+        # uint8_t* LE pixels
+        # uint8_t LE padding
 
 
         columns = bytearray()
@@ -264,29 +266,58 @@ class Picture():
             t_cdata = bytearray() # Column data
             t_pdata = bytearray() # Setup/Reset Post data
             t_insidepost = False
-            t_topdelta = 0
+            # Post offset markers
+            t_topdelta = -1
+            t_topoffset = -1
+            t_olddelta = -1
             t_postheight = 0
+            dbg_postcounter = 0
             for y in range(self.height):
-                # Yes. Doom pictures partition their columns into posts
-                #print(f"Current Pixel ({x},{y}): {self.pixelbuf[y*self.width+x]}")
+
+                ## Tall patch support ##
+
+                if  y == 254: # Tall patch border
+                    if  t_insidepost:
+                        # Abort post now, restart as usual
+                        t_cdata.extend(t_postheight.to_bytes(1, byteorder="little")) # Unused padding
+                        t_cdata.extend(b'\x00') # Unused padding
+                        t_cdata.extend(t_pdata) # Post data
+                        t_cdata.extend(b'\x00') # Unused padding
+                        t_pdata = bytearray() # Reset post data
+
+                    # Insert Fake post
+                    t_cdata.extend(b'\xfe\x00\x00\x00')
+                    t_topdelta = y # Flush topdelta
+                    t_postheight = 0
+                    t_insidepost = False
+
+                ## Actual algorithm ##
+
                 current_pixel = self.pixelbuf[y*self.width+x]
-                if ( current_pixel == -1 or y%255 >= 254 ) and t_insidepost: # Post END
+                if (current_pixel == -1 or t_postheight == 254) and t_insidepost: # Post END
                     t_cdata.extend(t_postheight.to_bytes(1, byteorder="little")) # Unused padding
                     t_cdata.extend(b'\x00') # Unused padding
                     t_cdata.extend(t_pdata) # Post data
                     t_cdata.extend(b'\x00') # Unused padding
-                    #t_cdata.extend(b'\xff') # Column Terminator
                     t_pdata = bytearray() # Reset post data
                     t_insidepost = False
-                elif current_pixel != -1 and not t_insidepost: # Post START
-                    t_topdelta = y % 255 # Format seems to rely on overflow
+                if current_pixel != -1 and not t_insidepost: # Post START
+
+                    # Tall patch tracking
+                    t_olddelta = t_topdelta
+                    t_topdelta = y
+                    t_topoffset = y if y < 254 else t_topdelta - t_olddelta
+
+                    # Start new post
                     t_postheight = 1
-                    t_cdata.extend(t_topdelta.to_bytes(1, byteorder="little"))
+                    t_cdata.extend((t_topoffset&0xFF).to_bytes(1, byteorder="little"))
                     t_pdata.extend(current_pixel.to_bytes(1, byteorder="little"))
                     t_insidepost = True
                 elif current_pixel != -1 and t_insidepost:
                     t_pdata.extend(current_pixel.to_bytes(1, byteorder="little"))
                     t_postheight = t_postheight + 1
+
+
 
             if t_insidepost: # Finish last post if End Of Column
                 t_cdata.extend(t_postheight.to_bytes(1, byteorder="little")) # Unused padding
