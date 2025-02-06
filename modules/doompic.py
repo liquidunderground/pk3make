@@ -216,7 +216,10 @@ class Picture():
             self.offsetY = int(tokens.group(2))
             return (self.offsetX, self.offsetY)
 
-        tokens = re.match(r"\s+([^\s]+)\s*", offset)
+        tokens = re.match(r"\s*([^\s]+)\s*", offset)
+        if not tokens:
+            raise Exception(f'Offset "{offset}" not supported')
+
         match tokens.group(1):
             case "": # No offset given - default to "0 0"
                 self.offsetX = 0
