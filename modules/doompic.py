@@ -1,9 +1,10 @@
 class Palette:
-    colors = []
     def __init__(self, filename):
         import os
         from modules.doomglob import find_lump, DuplicateLumpError
         from PIL import Image
+
+        self.colors = []
 
         # Colormath-based code commented out for future reference
         # Euclidean distance is 50x faster

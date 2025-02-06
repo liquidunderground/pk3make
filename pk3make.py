@@ -110,6 +110,7 @@ def build(makefile):
                     lumpglob = doomglob.find_lump(opts["srcdir"], lumpdef[0])
 
 
+
             for lump in natsorted(lumpglob, key=lambda l: l[0]):
                 lump_dcheck = doomglob.find_lump(opts["srcdir"], lump[0])
 
@@ -124,14 +125,15 @@ def build(makefile):
 
                 if os.path.exists(destfile) and os.path.getmtime(srcfile) < os.path.getmtime(destfile):
                     continue
+                fake_lumpdef = (lump[0],lumpdef[1],lumpdef[2])
                 ppx_context = {
                     "srcfile" :  srcfile,
                     "destfile" :  destfile,
                     "opts" :  opts,
                     "pdict": palettes,
                     }
-                ppx_futures.append( ppx.submit(cr_build_lump, ppx_lock, lumpdef, ppx_context ) )
-                #cr_build_lump(ppx_lock, lumpdef, ppx_context ) # For testing single-threadedly
+                ppx_futures.append( ppx.submit(cr_build_lump, ppx_lock, fake_lumpdef, ppx_context ) )
+                #cr_build_lump(ppx_lock, fake_lumpdef, ppx_context ) # For testing single-threadedly
 
         # Did anything actually work?
         for f in ppx_futures:
