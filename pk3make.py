@@ -209,7 +209,6 @@ def main():
     if step_pack:
         pack(pk3mf)
 
-    #clean()
     return
 
 if __name__ == "__main__":
@@ -231,7 +230,7 @@ if __name__ == "__main__":
 
 
     ap_main.add_argument('verb' , help='Action to perform.', choices=verbs)
-    ap_main.add_argument('makefile', nargs='?', const='./PK3Makefile', help='PK3Makefile to referebce')
+    ap_main.add_argument('makefile', nargs='?', const='./PK3Makefile', help='PK3Makefile to reference')
 
     args = ap_main.parse_args()
 
