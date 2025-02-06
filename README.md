@@ -98,7 +98,7 @@ of the following:
 - `graphic`: File is an image and should be converted to a Doom Picture using `OFFSET` (see below) as a picture offset. If missing, the offset is assumed to be `0 0`.
 - `marker`: File does not exist and is a 0-byte marker. Explicit path definition required.
 - `palette`: File is a graphic and should be converted to a color palette. Only PNG images supported.
-- `raw`: Copy the file over as-is
+- `raw`: Copy the file over as-is. When `preserve_filename` is given in the offset, the original filename will be preserved.
 - `tinttab`: File is a TINTTAB. OFFSET is defined as `<PALETTE> <WEIGHT>`. Upon generation, `PALETTE` orthogonally maps each color index against one another, `WEIGHT` specifies a bias towards horizontal/vertical colors between 0 and 1.
 - `udmf`: (Not supported yet.) File is a UDMF TEXTMAP. PK3Make will generate a directory named LUMPNAME featuring:
   - `<LUMPNAME>`: Marker

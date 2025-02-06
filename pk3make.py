@@ -117,6 +117,10 @@ def build(makefile):
                 srcfile = opts["srcdir"] + '/' + lump[1]
                 destfile = opts["workdir"] + lump[2]
 
+                params = re.match(r"\s*([\w]+)\s*", lumpdef[2] or '')
+                if params != None and "preserve_filename" in params.groups():
+                    destfile = opts["workdir"] +'/'+ lump[1]
+
                 # Out-Of-Date check
                 if lumpdef[1] in ["colormap", "tinttab"]:
                     palbase_name = re.match(r"\s*([\w]+)\s*", lumpdef[2]).group(1)
