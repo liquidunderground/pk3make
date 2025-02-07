@@ -16,4 +16,5 @@ def copy_tree(srcdir, pk3, arcname):
 def copy_file(srcfile, pk3, arcname):
     with zipfile.ZipFile(pk3, "a") as zfile:
         abssrc = os.path.abspath(srcfile)
-        zfile.write(abssrc, arcname)
+        if arcname.lstrip('/') not in zfile.namelist():
+            zfile.write(abssrc, arcname)
