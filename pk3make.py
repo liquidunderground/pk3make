@@ -163,28 +163,32 @@ def pack(makefile):
 
     print("# Packing")
 
-    for lumpdef in makefile.get_lumpdefs():
-        match lumpdef[1]:
-            case "marker":
-                print(f"## Adding marker {lumpdef[0]}")
-                pk3zip.add_marker(lumpdef[0], opts["destfile"])
-            case _:
-                params = re.match(r"\s*([\w]+)\s*", lumpdef[2] or '')
-                searchname = os.path.dirname(lumpdef[0])+'/'+pathlib.Path(lumpdef[0]).stem[:8]
-                if params != None and "preserve_filename" in params.groups():
-                    searchname = lumpdef[0]
+    with pk3zip.PK3File(opts["destfile"], "w") as pk3:
 
-                wf_glob = doomglob.find_lump(opts["workdir"], searchname)
-                for workfile in natsorted(wf_glob, key=lambda tup: tup[0]):
-                    wf_path = opts["workdir"] + workfile[2]
-                    arcpath = workfile[2]
-
+        for lumpdef in makefile.get_lumpdefs():
+            match lumpdef[1]:
+                case "marker":
+                    print(f"## Adding marker {lumpdef[0]}")
+                    #pk3zip.add_marker(lumpdef[0], opts["destfile"])
+                    pk3.writestr(lumpdef[0], "")
+                case _:
+                    params = re.match(r"\s*([\w]+)\s*", lumpdef[2] or '')
+                    searchname = os.path.dirname(lumpdef[0])+'/'+pathlib.Path(lumpdef[0]).stem[:8]
                     if params != None and "preserve_filename" in params.groups():
-                        wf_path = opts["workdir"]+'/'+workfile[1]
-                        arcpath = os.path.dirname(workfile[2])+'/'+os.path.basename(workfile[1])
+                        searchname = lumpdef[0]
 
-                    print(f'## Packing lump {arcpath}')
-                    pk3zip.copy_file(wf_path, opts["destfile"], arcpath)
+                    wf_glob = doomglob.find_lump(opts["workdir"], searchname)
+                    for workfile in natsorted(wf_glob, key=lambda tup: tup[0]):
+                        wf_path = opts["workdir"] + workfile[2]
+                        arcpath = workfile[2]
+
+                        if params != None and "preserve_filename" in params.groups():
+                            wf_path = opts["workdir"]+'/'+workfile[1]
+                            arcpath = os.path.dirname(workfile[2])+'/'+os.path.basename(workfile[1])
+
+                        print(f'## Packing lump {arcpath}')
+                        #pk3zip.copy_file(wf_path, opts["destfile"], arcpath)
+                        pk3.write(wf_path, arcpath)
     return
 
 def main():

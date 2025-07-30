@@ -1,23 +1,41 @@
 import os
 import zipfile
 
-def add_marker(marker, pk3):
-    with  zipfile.ZipFile(pk3, "a") as zfile:
-        zfile.writestr(marker, "")
+class PK3File(zipfile.ZipFile):
+    """This class is basically a deterministic ZIP file.
+    Four attributes need to be controlled:
+    1. Order of files follows programmatic order
+    2. Timestamp is set to 1980-01-01 00:00:00
+    3. All files are set to permissions (d)rw-rw-rw-
+    4. Create system is set to 03/Unix
+    """
 
-def copy_tree(srcdir, pk3, arcname):
-    with  zipfile.ZipFile(pk3, "a") as zfile:
-        srcroot = os.path.abspath(workdir)
-        for root,dirs,files in os.walk(srcroot):
-            zfile.write(root)
-            for file in files:
-                zfile.write(os.path.join(root,file))
+    ### Inherited/overwritten ZipFile functions ###
+    def mkdir(self, zinfo_or_directory, mode=511):
+        # Mode is overwritten to achieve determinism
+        zipfile.ZipFile.mkdir(self, zinfo_or_directory, 511)
+        #self._overwrite_metadata(zinfo_or_directory)
+        
+        metadata = self.getinfo(zinfo_or_directory)
+        metadata.external_attr = (0o40744 << 16) | 0x10  # Octal encoding for drwxr--r--
+        metadata.create_system = 3
+        metadata.date_time = (1980, 0, 0, 0, 0, 0)
 
-def copy_file(srcfile, pk3, arcname):
-    with zipfile.ZipFile(pk3, "a") as zfile:
-        abssrc = os.path.abspath(srcfile)
-        arcdir = os.path.dirname(arcname)
-        if not zipfile.Path(zfile, arcdir.lstrip('/').rstrip('/')+'/').exists():
-            zfile.mkdir(arcdir.lstrip('/'))
-        if arcname.lstrip('/').rstrip('/') not in zfile.namelist():
-            zfile.write(abssrc, arcname)
+    def write(self, filename, arcname, compress_type=None, compresslevel=None):
+        
+        # Mode is overwritten to achieve determinism
+        zipfile.ZipFile.write(self, filename, arcname, compress_type, compresslevel)
+        
+        metadata = self.getinfo(arcname.lstrip('/'))
+        metadata.external_attr = 0o0744 << 16 # Octal encoding for -rwxr--r--
+        metadata.create_system = 3
+        metadata.date_time = (1980, 0, 0, 0, 0, 0)
+
+    def writestr(self, zinfo_or_arcname, data, compress_type=None, compresslevel=None):
+        # Mode is overwritten to achieve determinism
+        zipfile.ZipFile.writestr(self, zinfo_or_arcname, data, compress_type, compresslevel)
+        
+        metadata = self.getinfo(zinfo_or_directory)
+        metadata.external_attr = 0o0744 << 16  # Octal encoding for -rwxr--r--
+        metadata.create_system = 3
+        metadata.date_time = (1980, 0, 0, 0, 0, 0)
