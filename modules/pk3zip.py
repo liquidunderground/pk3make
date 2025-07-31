@@ -11,20 +11,30 @@ class PK3File(zipfile.ZipFile):
     """
 
     ### Inherited/overwritten ZipFile functions ###
+    """
     def mkdir(self, zinfo_or_directory, mode=511):
         # Mode is overwritten to achieve determinism
         zipfile.ZipFile.mkdir(self, zinfo_or_directory, 511)
-        
 
     def write(self, filename, arcname, compress_type=None, compresslevel=None):
         
         zipfile.ZipFile.write(self, filename, arcname, compress_type, compresslevel)
-        metadata.external_attr = 0o0744 << 16 # Octal encoding for -rwxr--r--
 
     def writestr(self, zinfo_or_arcname, data, compress_type=None, compresslevel=None):
         zipfile.ZipFile.writestr(self, zinfo_or_arcname, data, compress_type, compresslevel)
+    """    
         
-        metadata = self.getinfo(zinfo_or_directory)
-        metadata.external_attr = 0o0744 << 16  # Octal encoding for -rwxr--r--
-        metadata.create_system = 3
-        metadata.date_time = (1980, 0, 0, 0, 0, 0)
+    def close(self):
+        """PK3Files are lazy - they overwrite the metadata upon closure. Why? Because Windows
+        """
+        
+        for metadata in self.infolist():
+           
+            metadata.create_system = 3
+            metadata.date_time = (1980, 1, 1, 0, 0, 0)
+            
+            metadata.external_attr = 0o0744 << 16  # Octal encoding for -rwxr--r--
+            if metadata.is_dir():
+                metadata.external_attr = (0o40744 << 16) | 0x10  # Octal encoding for drwxr--r--
+            
+        zipfile.ZipFile.close(self)
