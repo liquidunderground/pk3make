@@ -166,19 +166,20 @@ def pack(makefile):
     # Keep PK3 file in memory to avoid Windows' file access locks
     pk3buf = io.BytesIO()
     
-    with pk3zip.PK3File(pk3buf, "w") as pk3:
-
-        for lumpdef in makefile.get_lumpdefs():
-            print(f'# Packing lumpdef {lumpdef}')
-            match lumpdef[1]:
-                case "marker":
-                    print(f"## Adding marker {lumpdef[0]}")
+    for lumpdef in makefile.get_lumpdefs():
+        print(f'# Packing lumpdef {lumpdef}')
+        match lumpdef[1]:
+            case "marker":
+                print(f"## Adding marker {lumpdef[0]}")
+                with pk3zip.PK3File(pk3buf, "w") as pk3:
                     pk3.writestr(lumpdef[0], "")
-                case _:
-                    params = re.match(r"\s*([\w]+)\s*", lumpdef[2] or '')
-                    searchname = os.path.dirname(lumpdef[0])+'/'+pathlib.Path(lumpdef[0]).stem[:8]
-                    if params != None and "preserve_filename" in params.groups():
-                        searchname = lumpdef[0]
+            case _:
+                params = re.match(r"\s*([\w]+)\s*", lumpdef[2] or '')
+                searchname = os.path.dirname(lumpdef[0])+'/'+pathlib.Path(lumpdef[0]).stem[:8]
+                if params != None and "preserve_filename" in params.groups():
+                    searchname = lumpdef[0]
+                
+                with pk3zip.PK3File(pk3buf, "w") as pk3:
 
                     wf_glob = doomglob.find_lump(opts["workdir"], searchname)
                     wf_glob = natsorted(wf_glob, key=lambda tup: tup[0])
