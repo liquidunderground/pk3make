@@ -14,21 +14,12 @@ class PK3File(zipfile.ZipFile):
     def mkdir(self, zinfo_or_directory, mode=511):
         # Mode is overwritten to achieve determinism
         zipfile.ZipFile.mkdir(self, zinfo_or_directory, 511)
-        #self._overwrite_metadata(zinfo_or_directory)
         
-        metadata = self.getinfo(zinfo_or_directory)
-        metadata.external_attr = (0o40744 << 16) | 0x10  # Octal encoding for drwxr--r--
-        metadata.create_system = 3
-        metadata.date_time = (1980, 0, 0, 0, 0, 0)
 
     def write(self, filename, arcname, compress_type=None, compresslevel=None):
         
         zipfile.ZipFile.write(self, filename, arcname, compress_type, compresslevel)
-        
-        metadata = self.getinfo(arcname.lstrip('/'))
         metadata.external_attr = 0o0744 << 16 # Octal encoding for -rwxr--r--
-        metadata.create_system = 3
-        metadata.date_time = (1980, 0, 0, 0, 0, 0)
 
     def writestr(self, zinfo_or_arcname, data, compress_type=None, compresslevel=None):
         zipfile.ZipFile.writestr(self, zinfo_or_arcname, data, compress_type, compresslevel)
