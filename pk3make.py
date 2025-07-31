@@ -115,7 +115,7 @@ def build(makefile):
                 lump_dcheck = doomglob.find_lump(opts["srcdir"], lump[0])
 
                 srcfile = opts["srcdir"] + '/' + lump[1]
-                destfile = opts["workdir"] + lump[2]
+                destfile = opts["workdir"] + '/' + lump[2]
 
                 params = re.match(r"\s*([\w]+)\s*", lumpdef[2] or '')
                 if params != None and "preserve_filename" in params.groups():
