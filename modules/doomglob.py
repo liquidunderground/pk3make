@@ -20,6 +20,9 @@ def find_lump(srcdir, lumpname):
         if  Path(srcdir.rstrip('/')+'/'+path).is_file(): # Filter out directories
             out.append( (doomname, path, arcpath) )
 
+    # Deduplicate out
+    out = [x for n,x in enumerate(out) if x not in out[:n] ]
+                    
     return out # List of tuples (LUMPNAME, PATH, ARCPATH)
 
 def fake_lump(lumpname):

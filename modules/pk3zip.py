@@ -23,7 +23,6 @@ class PK3File(zipfile.ZipFile):
 
     def write(self, filename, arcname, compress_type=None, compresslevel=None):
         
-        # Mode is overwritten to achieve determinism
         zipfile.ZipFile.write(self, filename, arcname, compress_type, compresslevel)
         
         metadata = self.getinfo(arcname.lstrip('/'))
@@ -32,7 +31,6 @@ class PK3File(zipfile.ZipFile):
         metadata.date_time = (1980, 0, 0, 0, 0, 0)
 
     def writestr(self, zinfo_or_arcname, data, compress_type=None, compresslevel=None):
-        # Mode is overwritten to achieve determinism
         zipfile.ZipFile.writestr(self, zinfo_or_arcname, data, compress_type, compresslevel)
         
         metadata = self.getinfo(zinfo_or_directory)

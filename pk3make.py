@@ -166,10 +166,10 @@ def pack(makefile):
     with pk3zip.PK3File(opts["destfile"], "w") as pk3:
 
         for lumpdef in makefile.get_lumpdefs():
+            print(f'# Packing lumpdef {lumpdef}')
             match lumpdef[1]:
                 case "marker":
                     print(f"## Adding marker {lumpdef[0]}")
-                    #pk3zip.add_marker(lumpdef[0], opts["destfile"])
                     pk3.writestr(lumpdef[0], "")
                 case _:
                     params = re.match(r"\s*([\w]+)\s*", lumpdef[2] or '')
@@ -178,16 +178,26 @@ def pack(makefile):
                         searchname = lumpdef[0]
 
                     wf_glob = doomglob.find_lump(opts["workdir"], searchname)
-                    for workfile in natsorted(wf_glob, key=lambda tup: tup[0]):
-                        wf_path = opts["workdir"] + workfile[2]
-                        arcpath = workfile[2]
+                    wf_glob = natsorted(wf_glob, key=lambda tup: tup[0])
 
-                        if params != None and "preserve_filename" in params.groups():
-                            wf_path = opts["workdir"]+'/'+workfile[1]
-                            arcpath = os.path.dirname(workfile[2])+'/'+os.path.basename(workfile[1])
+                    #print(f'\nGLOB: {wf_glob}\n')
+                    #print(f'NAMELIST: {pk3.namelist()}\n')
+
+                    wf_unique = [x for x in wf_glob if x[2].lstrip('/').rstrip('/') not in pk3.namelist() ]
+                    if params != None and "preserve_filename" in params.groups():
+                        wf_unique = [x for x in wf_glob if x[1].lstrip('/').rstrip('/') not in pk3.namelist() ]
+
+                    #print(f'\nUNIQUE GLOB: {wf_unique}\n')
+
+                    for lump,srcfile,arcpath in wf_unique:
+                        wf_path = opts["workdir"] + '/' + srcfile
 
                         print(f'## Packing lump {arcpath}')
-                        #pk3zip.copy_file(wf_path, opts["destfile"], arcpath)
+                        
+                        if params != None and "preserve_filename" in params.groups():
+                            wf_path = opts["workdir"]+'/'+srcfile
+                            arcpath = os.path.dirname(arcpath)+'/'+os.path.basename(srcfile)
+
                         pk3.write(wf_path, arcpath)
     return
 
