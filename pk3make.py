@@ -153,14 +153,6 @@ def pack(makefile):
     if opts["destfile"] == None:
         raise FileNotFoundError("destfile is not defined")
 
-    if not os.path.isdir(os.path.dirname(opts["destfile"])):
-        print(f'# Creating directory {os.path.dirname(opts["destfile"])}')
-        os.mkdir(os.path.dirname(opts["destfile"]))
-
-    if os.path.isfile(opts["destfile"]):
-        print(f'## Deleting {opts["destfile"]} for recreation')
-        os.remove(opts["destfile"])
-
     print("# Packing")
     
     # Keep PK3 file in memory to avoid Windows' file access locks
@@ -205,7 +197,17 @@ def pack(makefile):
                         pk3.write(wf_path, arcpath)
     
     # Commit in-memory PK3 file to disk
+    
+    if not os.path.isdir(os.path.dirname(opts["destfile"])):
+        print(f'# Creating directory {os.path.dirname(opts["destfile"])}')
+        os.mkdir(os.path.dirname(opts["destfile"]))
+
+    if os.path.isfile(opts["destfile"]):
+        print(f'## Deleting {opts["destfile"]} for recreation')
+        os.remove(opts["destfile"])
+    
     with open(opts["destfile"], "wb") as f:
+        print(f'## Writing {opts["destfile"]}')
         f.write(pk3buf.getvalue())
     
     return
