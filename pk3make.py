@@ -84,7 +84,7 @@ def get_palette(lock, lumpname, opts, pdict):
 
 def build(makefile):
     from modules import doompic, doomglob
-    from natsort import natsorted
+    from natsort import natsorted, ns
     import shutil, os, re
     import asyncio, concurrent.futures, multiprocessing
 
@@ -111,7 +111,7 @@ def build(makefile):
 
 
 
-            for lump in natsorted(lumpglob, key=lambda l: l[0]):
+            for lump in natsorted(lumpglob, alg=ns.PATH):
                 lump_dcheck = doomglob.find_lump(opts["srcdir"], lump[0])
 
                 srcfile = opts["srcdir"] + '/' + lump[1]
@@ -146,7 +146,7 @@ def build(makefile):
 
 def pack(makefile):
     from modules import pk3zip, doomglob
-    from natsort import natsorted
+    from natsort import natsorted, ns
     import io, os, pathlib, re
 
     opts = makefile.get_options()
@@ -174,7 +174,7 @@ def pack(makefile):
                 with pk3zip.PK3File(pk3buf, "a") as pk3:
 
                     wf_glob = doomglob.find_lump(opts["workdir"], searchname)
-                    wf_glob = natsorted(wf_glob, key=lambda tup: tup[0])
+                    wf_glob = natsorted(wf_glob, alg=ns.PATH)
 
                     #print(f'\nGLOB: {wf_glob}\n')
                     #print(f'NAMELIST: {pk3.namelist()}\n')
@@ -188,11 +188,11 @@ def pack(makefile):
                     for lump,srcfile,arcpath in wf_unique:
                         wf_path = opts["workdir"] + '/' + srcfile
 
-                        print(f'## Packing lump {arcpath}')
-                        
                         if params != None and "preserve_filename" in params.groups():
                             wf_path = opts["workdir"]+'/'+srcfile
                             arcpath = os.path.dirname(arcpath)+'/'+os.path.basename(srcfile)
+
+                        print(f'## Packing lump {arcpath}')    
 
                         pk3.write(wf_path, arcpath)
     
