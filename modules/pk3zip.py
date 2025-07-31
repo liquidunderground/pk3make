@@ -1,5 +1,6 @@
-import os
-import zipfile
+import os, io, re
+import zipfile, pathlib
+#from binaryornot.check import is_binary
 
 class PK3File(zipfile.ZipFile):
     """This class is basically a deterministic ZIP file.
@@ -15,14 +16,36 @@ class PK3File(zipfile.ZipFile):
     def mkdir(self, zinfo_or_directory, mode=511):
         # Mode is overwritten to achieve determinism
         zipfile.ZipFile.mkdir(self, zinfo_or_directory, 511)
-
+    """
+    
     def write(self, filename, arcname, compress_type=None, compresslevel=None):
         
+        nodename = pathlib.Path(filename).stem + pathlib.Path(filename).suffix
+        
+        # Plain text file -> chain into writestr to convert line breaks
+        #if not is_binary(filename):
+        p = re.compile('(SOC_.*)|' \
+            '(.*\.soc)|' \
+            '(TEXTURES)|' \
+            '(ANIMDEFS)|' \
+            '(MUSICDEF)|' \
+            '(L_.*)|' \
+            '(lua_.*)|' \
+            '(.*\.lua)|' \
+            '(.*\.txt)|' \
+            '(S_SKIN)|' \
+            '(SPRTINFO)')
+        if p.match(nodename):
+            with open(filename, mode='r') as f:
+                raw_file = f.read()
+            self.writestr(arcname, raw_file,compress_type, compresslevel)
+            return
+            
         zipfile.ZipFile.write(self, filename, arcname, compress_type, compresslevel)
 
     def writestr(self, zinfo_or_arcname, data, compress_type=None, compresslevel=None):
-        zipfile.ZipFile.writestr(self, zinfo_or_arcname, data, compress_type, compresslevel)
-    """    
+        # Force LF line breaks to guarantee determinism
+        zipfile.ZipFile.writestr(self, zinfo_or_arcname, data.replace(f'\r\n',f'\n'), compress_type, compresslevel)
         
     def close(self):
         """PK3Files are lazy - they overwrite the metadata upon closure. Why? Because Windows
