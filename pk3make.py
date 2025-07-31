@@ -147,7 +147,7 @@ def build(makefile):
 def pack(makefile):
     from modules import pk3zip, doomglob
     from natsort import natsorted
-    import os, pathlib, re
+    import io, os, pathlib, re
 
     opts = makefile.get_options()
     if opts["destfile"] == None:
@@ -162,8 +162,11 @@ def pack(makefile):
         os.remove(opts["destfile"])
 
     print("# Packing")
-
-    with pk3zip.PK3File(opts["destfile"], "w") as pk3:
+    
+    # Keep PK3 file in memory to avoid Windows' file access locks
+    pk3buf = io.BytesIO()
+    
+    with pk3zip.PK3File(pk3buf, "w") as pk3:
 
         for lumpdef in makefile.get_lumpdefs():
             print(f'# Packing lumpdef {lumpdef}')
@@ -199,6 +202,11 @@ def pack(makefile):
                             arcpath = os.path.dirname(arcpath)+'/'+os.path.basename(srcfile)
 
                         pk3.write(wf_path, arcpath)
+    
+    # Commit in-memory PK3 file to disk
+    with open(opts["destfile"], "wb") as f:
+        f.write(pk3buf.getvalue())
+    
     return
 
 def main():
