@@ -5,7 +5,7 @@ class DuplicateLumpError(Exception):
 
 def find_lump(srcdir, lumpname):
     import os, glob
-    from pathlib import Path
+    import pathlib
     out = list()
 
     if srcdir == None:
@@ -15,10 +15,11 @@ def find_lump(srcdir, lumpname):
 
     #for path in glob.glob(searchstr, root_dir=srcdir):
     for path in glob.iglob('**/'+lumpname+'*', root_dir=srcdir, recursive=True):
-        doomname = Path(path).stem[:8]
-        arcpath = '/'+os.path.dirname(path).lstrip('/').rstrip('/')+'/'+doomname
-        if  Path(srcdir.rstrip('/')+'/'+path).is_file(): # Filter out directories
-            out.append( (doomname, path, arcpath) )
+        posixpath = pathlib.Path(path).as_posix()
+        doomname = pathlib.Path(path).stem[:8]
+        arcpath = (os.path.dirname(posixpath)+'/'+doomname).lstrip('/').rstrip('/')
+        if  pathlib.Path(srcdir.rstrip('/')+'/'+posixpath).is_file(): # Filter out directories
+            out.append( (doomname, posixpath, arcpath) )
 
     # Deduplicate out
     out = [x for n,x in enumerate(out) if x not in out[:n] ]
