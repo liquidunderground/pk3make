@@ -1,0 +1,11 @@
+# === Soundtrack Makefile ===
+#
+# Generate a music PK3 without needing a palette
+?srcdir: src
+?workdir: build
+?destfile: bin/wbmusic.pk3
+
+MUSICDEF raw
+D_*.mid raw
+/Music/S_DIGITL marker
+O_*.ogg raw
