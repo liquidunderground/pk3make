@@ -35,7 +35,7 @@ class PK3Makefile():
                 if tokens: # Is it a Buildopt?
                     match tokens.group(1):
                         case "srcdir" | "workdir" | "destfile" | "palette" as cmd:
-                            self.options[cmd] = tokens.group(2)
+                            self.options[cmd] = tokens.group(2).rstrip('/')
                 tokens = re.match(re_lumpdef, workline)
                 if tokens: # Is it a Lumpdef?
                     match tokens.group(2):

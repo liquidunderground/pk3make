@@ -84,7 +84,7 @@ def get_palette(lock, lumpname, opts, pdict):
 
 def build(makefile):
     from modules import doompic, doomglob
-    from natsort import natsorted
+    from natsort import natsorted, ns
     import shutil, os, re
     import asyncio, concurrent.futures, multiprocessing
 
@@ -111,11 +111,11 @@ def build(makefile):
 
 
 
-            for lump in natsorted(lumpglob, key=lambda l: l[0]):
+            for lump in natsorted(lumpglob, alg=ns.PATH):
                 lump_dcheck = doomglob.find_lump(opts["srcdir"], lump[0])
 
                 srcfile = opts["srcdir"] + '/' + lump[1]
-                destfile = opts["workdir"] + lump[2]
+                destfile = opts["workdir"] + '/' + lump[2]
 
                 params = re.match(r"\s*([\w]+)\s*", lumpdef[2] or '')
                 if params != None and "preserve_filename" in params.groups():
@@ -146,13 +146,58 @@ def build(makefile):
 
 def pack(makefile):
     from modules import pk3zip, doomglob
-    from natsort import natsorted
-    import os, pathlib, re
+    from natsort import natsorted, ns
+    import io, os, pathlib, re
 
     opts = makefile.get_options()
     if opts["destfile"] == None:
         raise FileNotFoundError("destfile is not defined")
 
+    print("# Packing")
+    
+    # Keep PK3 file in memory to avoid Windows' file access locks
+    pk3buf = io.BytesIO()
+    
+    for lumpdef in makefile.get_lumpdefs():
+        print(f'# Packing lumpdef {lumpdef}')
+        match lumpdef[1]:
+            case "marker":
+                print(f"## Adding marker {lumpdef[0]}")
+                with pk3zip.PK3File(pk3buf, "a") as pk3:
+                    pk3.writestr(lumpdef[0], "")
+            case _:
+                params = re.match(r"\s*([\w]+)\s*", lumpdef[2] or '')
+                searchname = os.path.dirname(lumpdef[0])+'/'+pathlib.Path(lumpdef[0]).stem[:8]
+                if params != None and "preserve_filename" in params.groups():
+                    searchname = lumpdef[0]
+                
+                with pk3zip.PK3File(pk3buf, "a") as pk3:
+
+                    wf_glob = doomglob.find_lump(opts["workdir"], searchname)
+                    wf_glob = natsorted(wf_glob, alg=ns.PATH)
+
+                    #print(f'\nGLOB: {wf_glob}\n')
+                    #print(f'NAMELIST: {pk3.namelist()}\n')
+
+                    wf_unique = [x for x in wf_glob if x[2].lstrip('/').rstrip('/') not in pk3.namelist() ]
+                    if params != None and "preserve_filename" in params.groups():
+                        wf_unique = [x for x in wf_glob if x[1].lstrip('/').rstrip('/') not in pk3.namelist() ]
+
+                    #print(f'\nUNIQUE GLOB: {wf_unique}\n')
+
+                    for lump,srcfile,arcpath in wf_unique:
+                        wf_path = opts["workdir"] + '/' + srcfile
+
+                        if params != None and "preserve_filename" in params.groups():
+                            wf_path = opts["workdir"]+'/'+srcfile
+                            arcpath = os.path.dirname(arcpath)+'/'+os.path.basename(srcfile)
+
+                        print(f'## Packing lump {arcpath}')    
+
+                        pk3.write(wf_path, arcpath)
+    
+    # Commit in-memory PK3 file to disk
+    
     if not os.path.isdir(os.path.dirname(opts["destfile"])):
         print(f'# Creating directory {os.path.dirname(opts["destfile"])}')
         os.mkdir(os.path.dirname(opts["destfile"]))
@@ -160,31 +205,11 @@ def pack(makefile):
     if os.path.isfile(opts["destfile"]):
         print(f'## Deleting {opts["destfile"]} for recreation')
         os.remove(opts["destfile"])
-
-    print("# Packing")
-
-    for lumpdef in makefile.get_lumpdefs():
-        match lumpdef[1]:
-            case "marker":
-                print(f"## Adding marker {lumpdef[0]}")
-                pk3zip.add_marker(lumpdef[0], opts["destfile"])
-            case _:
-                params = re.match(r"\s*([\w]+)\s*", lumpdef[2] or '')
-                searchname = os.path.dirname(lumpdef[0])+'/'+pathlib.Path(lumpdef[0]).stem[:8]
-                if params != None and "preserve_filename" in params.groups():
-                    searchname = lumpdef[0]
-
-                wf_glob = doomglob.find_lump(opts["workdir"], searchname)
-                for workfile in natsorted(wf_glob, key=lambda tup: tup[0]):
-                    wf_path = opts["workdir"] + workfile[2]
-                    arcpath = workfile[2]
-
-                    if params != None and "preserve_filename" in params.groups():
-                        wf_path = opts["workdir"]+'/'+workfile[1]
-                        arcpath = os.path.dirname(workfile[2])+'/'+os.path.basename(workfile[1])
-
-                    print(f'## Packing lump {arcpath}')
-                    pk3zip.copy_file(wf_path, opts["destfile"], arcpath)
+    
+    with open(opts["destfile"], "wb") as f:
+        print(f'## Writing {opts["destfile"]}')
+        f.write(pk3buf.getvalue())
+    
     return
 
 def main():
