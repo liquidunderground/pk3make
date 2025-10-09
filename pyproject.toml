@@ -31,5 +31,8 @@ Homepage = "https://github.com/liquidunderground/pk3make"
 Issues = "https://github.com/liquidunderground/pk3make/issues"
 
 [build-system]
-requires = ["hatchling >= 1.26"]
+requires = ["hatchling >= 1.26", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
