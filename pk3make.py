@@ -147,7 +147,7 @@ def build(makefile):
 def pack(makefile):
     from modules import pk3zip, doomglob
     from natsort import natsorted, ns
-    import io, os, pathlib, re
+    import io, os, hashlib, pathlib, re
 
     opts = makefile.get_options()
     if opts["destfile"] == None:
@@ -199,7 +199,7 @@ def pack(makefile):
     # Commit in-memory PK3 file to disk
     
     if not os.path.isdir(os.path.dirname(opts["destfile"])):
-        print(f'# Creating directory {os.path.dirname(opts["destfile"])}')
+        print(f'## Creating directory {os.path.dirname(opts["destfile"])}')
         os.mkdir(os.path.dirname(opts["destfile"]))
 
     if os.path.isfile(opts["destfile"]):
@@ -210,6 +210,9 @@ def pack(makefile):
         print(f'## Writing {opts["destfile"]}')
         f.write(pk3buf.getvalue())
     
+    md5hash = hashlib.md5(pk3buf.getvalue())
+    print(f'\nMD5 Hash of {opts["destfile"]}: {md5hash.hexdigest()}')
+
     return
 
 def main():
