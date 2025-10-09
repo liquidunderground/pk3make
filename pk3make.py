@@ -257,6 +257,8 @@ def main():
     if step_prepare:
         prepare(pk3mf.get_options("workdir"))
     if step_build:
+        if args.verb == "build" and args.target != None:
+            pk3mf = pk3mf.filter_lumpdefs(args.target)
         build(pk3mf)
     if step_pack:
         pack(pk3mf)
@@ -286,6 +288,7 @@ if __name__ == "__main__":
     ap_pack = ap_sub.add_parser('pack', help='Assemble a PK3 file from the build directory')
 
     ap_main.add_argument('-v', '--verbose' , action='store_true', help='Verbose log output')
+    ap_build.add_argument('target', nargs='?', help='Target LUMPDEF')
     
     ap_main.add_argument('makefile', nargs='?', const='./PK3Makefile', help='PK3Makefile to reference')
     
