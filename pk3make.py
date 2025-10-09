@@ -2,10 +2,10 @@
 
 
 def clean(workdir="build"):
-    import os
+    import shutil
     print("# Removing workdir '{}'".format(workdir))
     try:
-        os.rmdir(workdir)
+        shutil.rmtree(workdir)
     except FileNotFoundError:
         pass
     return
