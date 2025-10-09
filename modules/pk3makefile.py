@@ -54,3 +54,12 @@ class PK3Makefile():
 
     def get_lumpdefs(self):
         return self.lumps
+    
+    def filter_lumpdefs(self, pattern):
+        import re,fnmatch
+
+        glob_re = re.compile(fnmatch.translate(pattern))
+
+        self.lumps = [x for x in self.lumps if glob_re.match(x[0])]
+
+        return self
