@@ -159,10 +159,15 @@ def pack(makefile):
     pk3buf = io.BytesIO()
     
     for lumpdef in makefile.get_lumpdefs():
-        print(f'# Packing lumpdef {lumpdef}')
+        
+        if args.verbose:
+            print(f'# Packing lumpdef {lumpdef}')
+            
         match lumpdef[1]:
             case "marker":
-                print(f"## Adding marker {lumpdef[0]}")
+                
+                if args.verbose:
+                    print(f"## Adding marker {lumpdef[0]}")
                 with pk3zip.PK3File(pk3buf, "a") as pk3:
                     pk3.writestr(lumpdef[0], "")
             case _:
@@ -192,9 +197,12 @@ def pack(makefile):
                             wf_path = opts["workdir"]+'/'+srcfile
                             arcpath = os.path.dirname(arcpath)+'/'+os.path.basename(srcfile)
 
-                        print(f'## Packing lump {arcpath}')    
+                        
+                        if args.verbose:
+                            print(f'## Packing lump {arcpath}')    
 
                         pk3.write(wf_path, arcpath)
+
     
     # Commit in-memory PK3 file to disk
     
@@ -230,7 +238,7 @@ def main():
             step_build = True
         case "pack":
             step_pack = True
-        case "all":
+        case None | "all":
             step_prepare = True
             step_build = True
             step_pack = True
@@ -271,11 +279,16 @@ if __name__ == "__main__":
             prog='pk3make',
             description='PK3Make - Make for (Weissblatt) PK3s',
             epilog='Type `pk3make --help` for more info.')
+    ap_sub = ap_main.add_subparsers(title='Build steps', dest='verb', metavar="")
+    
+    ap_clean = ap_sub.add_parser('clean', help='Delete the build directory')
+    ap_build = ap_sub.add_parser('build', help='Compile assets into the build directory')
+    ap_pack = ap_sub.add_parser('pack', help='Assemble a PK3 file from the build directory')
 
-
-    ap_main.add_argument('verb' , help='Action to perform.', choices=verbs)
+    ap_main.add_argument('-v', '--verbose' , action='store_true', help='Verbose log output')
+    
     ap_main.add_argument('makefile', nargs='?', const='./PK3Makefile', help='PK3Makefile to reference')
-
+    
     args = ap_main.parse_args()
 
     main()
