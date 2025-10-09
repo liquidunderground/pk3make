@@ -54,7 +54,7 @@ class PK3File(zipfile.ZipFile):
             '(SPRTINFO)')
         if p.match(nodename):
             # Force LF line breaks for text files
-            with open(filename, mode='r') as f:
+            with open(filename, mode='r', encoding='utf-8') as f:
                 raw_file = f.read().replace('\r\n','\n')
         else:
             with open(filename, mode='rb') as f:

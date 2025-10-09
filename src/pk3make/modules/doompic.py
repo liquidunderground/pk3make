@@ -5,6 +5,7 @@ class Palette:
         from PIL import Image
 
         self.colors = []
+        self.color_lookup = {} # Color LUT to speed up rgb2index (before estimate: 25:16,32)
 
         # Colormath-based code commented out for future reference
         # Euclidean distance is 50x faster
@@ -36,7 +37,10 @@ class Palette:
                         "b": pixel[2],
                         #"cielab": px_cielab, # COLORMATH STUB
                     }
+
+                    rgbcolor = (pixel[0] << 16) | (pixel[1] << 8) | (pixel[2])
                     self.colors.append(color_o) # Tuple (R,G,B)
+                    self.color_lookup[rgbcolor] = color_o["id"]
 
     def rgb2index(self, color: tuple):
         # Colormath-based code commented out for future reference
@@ -46,7 +50,13 @@ class Palette:
         from colormath2.color_conversions import convert_color
         from colormath2.color_diff import delta_e_cie2000
         """
+        # Hot path O(1): Color matches exactly (most common if you know what you're doing)
+        rgbcolor = (int(color[0]) << 16) | (int(color[1]) << 8) | int(color[2])
+        if rgbcolor in self.color_lookup.keys():
+            #print(f"Converting {color} => #{rgbcolor:X}")
+            return self.colors[self.color_lookup[rgbcolor]]["id"]
 
+        # Cold path: Linear search for the closest color
         #color_lab = convert_color(sRGBColor(color[0], color[1], color[2], is_upscaled=True), LabColor)
         min_delta_e = float('inf')
         min_idx = -1

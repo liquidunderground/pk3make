@@ -1,0 +1,38 @@
+[project]
+dynamic = ["version"]
+name = "pk3make"
+authors = [
+  { name="Zibon Badi", email="zibonbadi@gmail.com" },
+]
+description = "Build system for Weissblatt PK3 files"
+dependencies = [
+  "colormath2",
+  "pillow",
+  "natsort",
+]
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+    "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
+    "Topic :: Software Development :: Build Tools",
+]
+license = "LGPL-3.0-or-later"
+license-files = ["LICEN[CS]E*"]
+
+[project.scripts]
+pk3make = "pk3make:__main__"
+
+[project.urls]
+Homepage = "https://github.com/liquidunderground/pk3make"
+"GitHub" = "https://github.com/liquidunderground/pk3make"
+Issues = "https://github.com/liquidunderground/pk3make/issues"
+
+[build-system]
+requires = ["hatchling >= 1.26", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
