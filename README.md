@@ -4,18 +4,33 @@
 
 ## Installation
 
-1. Set up a [virtual environment](https://docs.python.org/3/library/venv.html)
-2. Install dependencies `pip install -r requirements.txt`
+0. Set up a [virtual environment](https://docs.python.org/3/library/venv.html)
+1. Install PK3Make: `pip install pk3make`
+2. ???
+3. Profits
 
 ## How to use
 
-PK3Make supplies multiple subcommands. To get an overview type:
+To fully build your project, simply run:
 
-    ./pk3make.py --help
+    python -m pk3make
+	
+To get an overview of options for PK3Make, type:
 
-To fully build your project akin to a makefile, simply type:
+    python -m pk3make --help
+	
+	
+By default, will use `./PK3Makefile` for it's PK3Makefile. Other can be given through `pk3make [PK3MAKEFILE]`. More on PK3Makefiles in the PK3Makefile reference below.
 
-    ./pk3make.py make ./PK3Makefile # Default PK3Makefile
+### Build steps
+
+PK3Makefile defines four subcommands, each with their own unique options:
+
+1. `pk3make clean`: Clean & remove the build directory
+2. `pk3make build`: Compile the build directory.
+3. `pk3make pack`: Assemble a PK3 file from the build directory's contents
+4. `pk3make all`: Build and pack (Default).
+
 
 ### Notes, Tips and Caveats
 
