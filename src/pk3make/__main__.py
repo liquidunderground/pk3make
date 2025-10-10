@@ -17,7 +17,7 @@ def prepare(workdir="build"):
 
 def cr_build_lump(lock, lumpdef, context):
     import shutil,os,re
-    from modules import doompic
+    from .modules import doompic
 
     bytedump = None
 
@@ -61,7 +61,7 @@ def cr_build_lump(lock, lumpdef, context):
                 ofile.write(bytedump)
 
 def get_palette(lock, lumpname, opts, pdict):
-    from modules import doompic, doomglob
+    from .modules import doompic, doomglob
     import os
 
     lock.acquire()
@@ -83,7 +83,7 @@ def get_palette(lock, lumpname, opts, pdict):
 
 
 def build(makefile):
-    from modules import doompic, doomglob
+    from .modules import doompic, doomglob
     from natsort import natsorted, ns
     import shutil, os, re
     import asyncio, concurrent.futures, multiprocessing
@@ -145,7 +145,7 @@ def build(makefile):
     return
 
 def pack(makefile):
-    from modules import pk3zip, doomglob
+    from .modules import pk3zip, doomglob
     from natsort import natsorted, ns
     import io, os, hashlib, pathlib, re
 
@@ -224,7 +224,7 @@ def pack(makefile):
     return
 
 def main():
-    from modules import pk3makefile
+    from .modules import pk3makefile
 
     # Step switches
     step_prepare = False
@@ -265,33 +265,27 @@ def main():
 
     return
 
+### CLI Interface ###
+
+import argparse
+import pathlib
+
+ap_main = argparse.ArgumentParser(
+        prog='pk3make',
+        description='PK3Make - Make for (Weissblatt) PK3s',
+        epilog='Type `pk3make --help` for more info.')
+ap_sub = ap_main.add_subparsers(title='Build steps', dest='verb', metavar="")
+
+ap_clean = ap_sub.add_parser('clean', help='Delete the build directory')
+ap_build = ap_sub.add_parser('build', help='Compile assets into the build directory')
+ap_pack = ap_sub.add_parser('pack', help='Assemble a PK3 file from the build directory')
+
+ap_main.add_argument('-v', '--verbose' , action='store_true', help='Verbose log output')
+ap_build.add_argument('target', nargs='?', help='Target LUMPDEF')
+
+ap_main.add_argument('makefile', nargs='?', const='./PK3Makefile', help='PK3Makefile to reference')
+
+args = ap_main.parse_args()
+
 if __name__ == "__main__":
-    import argparse
-    import pathlib
-
-    # Shell argument API
-    verbs = [
-        'clean', # Delete workdir
-        'prepare', # Make workdir tree etc.
-        'build', # Convert formats & copy files to workdir according to METAINFO
-        'pack', # Pack existing workdir into pk3. (May be used for music packs?)
-        'all', # Do everything
-    ]
-    ap_main = argparse.ArgumentParser(
-            prog='pk3make',
-            description='PK3Make - Make for (Weissblatt) PK3s',
-            epilog='Type `pk3make --help` for more info.')
-    ap_sub = ap_main.add_subparsers(title='Build steps', dest='verb', metavar="")
-    
-    ap_clean = ap_sub.add_parser('clean', help='Delete the build directory')
-    ap_build = ap_sub.add_parser('build', help='Compile assets into the build directory')
-    ap_pack = ap_sub.add_parser('pack', help='Assemble a PK3 file from the build directory')
-
-    ap_main.add_argument('-v', '--verbose' , action='store_true', help='Verbose log output')
-    ap_build.add_argument('target', nargs='?', help='Target LUMPDEF')
-    
-    ap_main.add_argument('makefile', nargs='?', const='./PK3Makefile', help='PK3Makefile to reference')
-    
-    args = ap_main.parse_args()
-
     main()

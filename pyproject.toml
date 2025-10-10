@@ -23,7 +23,7 @@ license = "LGPL-3.0-or-later"
 license-files = ["LICEN[CS]E*"]
 
 [project.scripts]
-pk3make = "pk3make:__main__"
+pk3make = "pk3make.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/liquidunderground/pk3make"
