@@ -17,7 +17,7 @@ def prepare(workdir="build"):
 
 def cr_build_lump(lock, lumpdef, context):
     import shutil,os,re
-    from modules import doompic
+    from .modules import doompic
 
     bytedump = None
 
@@ -61,7 +61,7 @@ def cr_build_lump(lock, lumpdef, context):
                 ofile.write(bytedump)
 
 def get_palette(lock, lumpname, opts, pdict):
-    from modules import doompic, doomglob
+    from .modules import doompic, doomglob
     import os
 
     lock.acquire()
@@ -83,7 +83,7 @@ def get_palette(lock, lumpname, opts, pdict):
 
 
 def build(makefile):
-    from modules import doompic, doomglob
+    from .modules import doompic, doomglob
     from natsort import natsorted, ns
     import shutil, os, re
     import asyncio, concurrent.futures, multiprocessing
@@ -145,7 +145,7 @@ def build(makefile):
     return
 
 def pack(makefile):
-    from modules import pk3zip, doomglob
+    from .modules import pk3zip, doomglob
     from natsort import natsorted, ns
     import io, os, hashlib, pathlib, re
 
@@ -224,7 +224,7 @@ def pack(makefile):
     return
 
 def main():
-    from modules import pk3makefile
+    from .modules import pk3makefile
 
     # Step switches
     step_prepare = False
