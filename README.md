@@ -13,11 +13,11 @@
 
 To fully build your project, simply run:
 
-    python -m pk3make
+    pk3make
 	
 To get an overview of options for PK3Make, type:
 
-    python -m pk3make --help
+    pk3make --help
 	
 	
 By default, will use `./PK3Makefile` for it's PK3Makefile. Other can be given through `pk3make [PK3MAKEFILE]`. More on PK3Makefiles in the PK3Makefile reference below.
