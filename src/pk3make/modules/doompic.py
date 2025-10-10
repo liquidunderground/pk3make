@@ -1,7 +1,6 @@
 class Palette:
     def __init__(self, filename):
         import os
-        from modules.doomglob import find_lump, DuplicateLumpError
         from PIL import Image
 
         self.colors = []
