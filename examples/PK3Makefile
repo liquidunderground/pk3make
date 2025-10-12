@@ -29,6 +29,7 @@
 
 PLAYPAL palette
 PAL* palette
+CREDITS.txt raw preserve_filename
 CLM0031 colormap PAL0031
 COLORMAP colormap PLAYPAL
 TRANS50 tinttab PAL0031 0.5
