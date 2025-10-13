@@ -111,7 +111,7 @@ def build(makefile):
 
 
 
-            for lump in natsorted(lumpglob, alg=ns.PATH):
+            for lump in natsorted(lumpglob, alg=ns.PATH, key=lambda x: x[1]):
                 lump_dcheck = doomglob.find_lump(opts["srcdir"], lump[0])
 
                 srcfile = opts["srcdir"] + '/' + lump[1]
@@ -179,7 +179,7 @@ def pack(makefile):
                 with pk3zip.PK3File(pk3buf, "a") as pk3:
 
                     wf_glob = doomglob.find_lump(opts["workdir"], searchname)
-                    wf_glob = natsorted(wf_glob, alg=ns.PATH)
+                    wf_glob = natsorted(wf_glob, alg=ns.PATH, key=lambda x: x[1])
 
                     #print(f'\nGLOB: {wf_glob}\n')
                     #print(f'NAMELIST: {pk3.namelist()}\n')
