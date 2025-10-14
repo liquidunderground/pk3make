@@ -6,6 +6,17 @@ class PK3MakeDependencyError(Exception):
     """To be raised when a lump should really be unique"""
     pass
 
+import enum,zipfile
+
+Compression = {
+    "none"            :   zipfile.ZIP_STORED,
+    "uncompressed"    :   zipfile.ZIP_STORED,
+    "lzma"            :   zipfile.ZIP_LZMA,
+    "bzip2"           :   zipfile.ZIP_BZIP2,
+    "zlib"            :   zipfile.ZIP_DEFLATED,
+    #zstd            =   zipfile.ZIP_ZSTANDARD
+}
+
 class PK3Makefile():
     #def __init__(self):
         #pass
@@ -18,6 +29,8 @@ class PK3Makefile():
             "workdir": None,
             "destfile": None,
             "palette": None,
+            "compression": None,
+            "compression_level": None,
         }
 
         self.lumps = []
@@ -34,7 +47,7 @@ class PK3Makefile():
                 tokens = re.match(re_buildopt, workline)
                 if tokens: # Is it a Buildopt?
                     match tokens.group(1):
-                        case "srcdir" | "workdir" | "destfile" | "palette" as cmd:
+                        case "srcdir" | "workdir" | "destfile" | "palette" | "compression" | "compression_level" as cmd:
                             self.options[cmd] = tokens.group(2).rstrip('/')
                 tokens = re.match(re_lumpdef, workline)
                 if tokens: # Is it a Lumpdef?

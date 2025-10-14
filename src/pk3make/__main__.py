@@ -111,7 +111,7 @@ def build(makefile):
 
 
 
-            for lump in natsorted(lumpglob, alg=ns.PATH):
+            for lump in natsorted(lumpglob, alg=ns.PATH, key=lambda x: x[1]):
                 lump_dcheck = doomglob.find_lump(opts["srcdir"], lump[0])
 
                 srcfile = opts["srcdir"] + '/' + lump[1]
@@ -145,7 +145,7 @@ def build(makefile):
     return
 
 def pack(makefile):
-    from .modules import pk3zip, doomglob
+    from .modules import pk3zip, doomglob, pk3makefile
     from natsort import natsorted, ns
     import io, os, hashlib, pathlib, re
 
@@ -153,7 +153,10 @@ def pack(makefile):
     if opts["destfile"] == None:
         raise FileNotFoundError("destfile is not defined")
 
-    print("# Packing")
+    compression = pk3makefile.Compression[opts["compression"]]
+    compression_level = int(opts["compression_level"])
+
+    print(f"# Packing (compression: {opts["compression"]} @ lv {opts["compression_level"]})")
     
     # Keep PK3 file in memory to avoid Windows' file access locks
     pk3buf = io.BytesIO()
@@ -169,17 +172,17 @@ def pack(makefile):
                 if args.verbose:
                     print(f"## Adding marker {lumpdef[0]}")
                 with pk3zip.PK3File(pk3buf, "a") as pk3:
-                    pk3.writestr(lumpdef[0], "")
+                    pk3.writestr(lumpdef[0], "", compress_type=compression, compresslevel=compression_level)
             case _:
                 params = re.match(r"\s*([\w]+)\s*", lumpdef[2] or '')
                 searchname = os.path.dirname(lumpdef[0])+'/'+pathlib.Path(lumpdef[0]).stem[:8]
                 if params != None and "preserve_filename" in params.groups():
                     searchname = lumpdef[0]
                 
-                with pk3zip.PK3File(pk3buf, "a") as pk3:
+                with pk3zip.PK3File(pk3buf, "a", compression=compression, compresslevel=compression_level) as pk3:
 
                     wf_glob = doomglob.find_lump(opts["workdir"], searchname)
-                    wf_glob = natsorted(wf_glob, alg=ns.PATH)
+                    wf_glob = natsorted(wf_glob, alg=ns.PATH, key=lambda x: x[1])
 
                     #print(f'\nGLOB: {wf_glob}\n')
                     #print(f'NAMELIST: {pk3.namelist()}\n')
@@ -201,7 +204,7 @@ def pack(makefile):
                         if args.verbose:
                             print(f'## Packing lump {arcpath}')    
 
-                        pk3.write(wf_path, arcpath)
+                        pk3.write(wf_path, arcpath, compress_type=compression, compresslevel=compression_level)
 
     
     # Commit in-memory PK3 file to disk

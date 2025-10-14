@@ -1,6 +1,18 @@
-# PK3Make
+# PK3Make - Build system for Weissblatt PK3 files
 
-"Make" for Weissblatt PK3 files
+[PK3] is a package format for game mods based on ZIP. Although originally introduced by Quake III Arena, it has been adopted by modern source ports of Doom and by extension Weissblatt.
+
+[PK3]: https://doomwiki.org/wiki/PK3
+
+PK3Make lets you automatically convert Textures, Flats, FADEs, color palettes, COLORMAPs and TINTTABs into lumps for Weissblatt and package them into a tidy PK3. Additional features include:
+
+- Deterministic PK3s - make sure that your project's PK3s are byte-for-byte reproducible
+- [METAINFO]-inspired syntax with support for sprite offsets, marker definitions and Glob-based LUMPDEFs
+- Bring your own PK3Makefile - Build different PK3s from the same asset tree
+- Multi-threaded building
+- Timestamp-based version checks - only build what's necessary as you develop
+
+[METAINFO]: https://mtrop.github.io/DoomTools/dimgconv.html
 
 ## Installation
 
@@ -89,8 +101,15 @@ outdated files into `?workdir` during the compilation process.
 
 `?palette:` defines the main color palette, by `LUMPNAME` (`PLAYPAL` by default)
 
-`?destfile:` describes a filepath to the destination PK3. This is where
-`?workdir` will get copied to during packing.
+`?destfile: <PATH>` describes a filepath to the destination PK3. This is where `?workdir` will get copied to during packing.
+
+`?compression: <TYPE>` and `?compression_level: <INT>` define file the destination PK3's compression method and level respectively. The following compression types are supported:
+
+1. `none | uncompressed`: Used to create uncompressed PK3s (default)
+2. `zlib`: zlib/DEFLATE-based compression.  (valid compression levels: `0...9`)
+3. `bzip2`: bzip2-based compression. (valid compression levels: `1...9`)
+4. `lzma`: LZMA compression.
+5. `zstd`: Zstandard compression (Python 3.14+; valid compression levels: `-131072...22`).
 
 
 ## Lump definitions
