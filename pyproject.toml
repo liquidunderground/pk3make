@@ -11,7 +11,7 @@ dependencies = [
   "natsort",
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",

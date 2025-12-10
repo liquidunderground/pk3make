@@ -14,7 +14,7 @@ Compression = {
     "lzma"            :   zipfile.ZIP_LZMA,
     "bzip2"           :   zipfile.ZIP_BZIP2,
     "zlib"            :   zipfile.ZIP_DEFLATED,
-    #zstd            =   zipfile.ZIP_ZSTANDARD
+    "zstd"            :   zipfile.ZIP_ZSTANDARD
 }
 
 class PK3Makefile():
