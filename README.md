@@ -65,7 +65,9 @@ Although the PK3 specification for Weissblatt's engine is based on
 it's directory namespaces are very different. This made Doom's usual
 autobuild toolkit [DoomTools](https://mtrop.github.io/DoomTools/) a
 poor fit for development. Due to the size of the Weissblatt project, manual
-assembly using SLADE was also out of the question.
+assembly using [SLADE] was also out of the question.
+
+[SLADE]: https://slade.mancubus.net/
 
 I chose Python as the basis for PK3Make because it is platform-independent,
 easy-to-read and ubiquitous and although some Doom/Weissblatt-specific
@@ -111,6 +113,8 @@ outdated files into `?workdir` during the compilation process.
 4. `lzma`: LZMA compression.
 5. `zstd`: Zstandard compression (Python 3.14+; valid compression levels: `-131072...22`).
 
+`?default_color_conversion_method: <METHOD>` defines the global color conversion method to be used. More in the section [Color Conversion](#color-conversion).
+
 
 ## Lump definitions
 
@@ -149,3 +153,20 @@ of the following:
 - `center`: Sets the offset to the center of the image
 - `sprite`: Sets the offset to `width/2 (height-4)`. This is a very common
   offset for sprites placed in the game world.
+
+
+### Color conversion
+
+To convert/generate graphics (`colormap`,`fade`,`flat`,`graphic`,`tinttab`), a valid color conversion method must be defined. When a LUMPDEF is evaluated, it's color conversion method is decided by the following order of precedence:
+
+1. LUMPDEF-local method, defined by the option `color_conversion_method=<METHOD>` of the LUMPDEF.
+2. Palette-local method, defined by the option `color_conversion_method=<METHOD>` of the referenced palette.
+3. Global method, defined by the build option `?default_color_conversion_method: <METHOD>`.
+
+The following color conversion methods are supported:
+
+1. `euclidean_rgb`: Euclidean distance across the RGB cube. This is the fastest method and most commonly used by other tools, such as [SLADE].
+2. `cylindrical_hsv`: Polar coordinate distance across a cylindrical interpretation of the HSV color space
+3. `conical_hsv`: Polar coordinate distance across a conical interpretation of the HSV color space, with colors converging towards black.
+4. `cie76`: CIE 1976 color distance calculation
+5. `cie2000`: Color distance calculation based on the CIEDE2000 Delta E function.
