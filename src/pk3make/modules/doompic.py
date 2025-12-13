@@ -1,7 +1,14 @@
 class Palette:
-    def __init__(self, filename):
+    def __init__(self, filename, **kwargs):
         import os
         from PIL import Image
+
+        self.__dict__ = kwargs
+
+        required_fields = ["color_conversion_method"]
+        for field in required_fields:
+            if field not in self.__dict__:
+                self.__dict__[field] = None
 
         self.colors = []
         self.color_lookup = {} # Color LUT to speed up rgb2index (before estimate: 25:16,32)
@@ -227,7 +234,7 @@ class Palette:
         return bytes(exbytes)
 
 
-    def colormap_tobytes(self, color_conversion_method="conical_hsv"):
+    def colormap_tobytes(self, **kwargs):
         from colormath2.color_objects import HSVColor, sRGBColor, LabColor
         from colormath2.color_conversions import convert_color
         from math import exp, log
@@ -235,8 +242,8 @@ class Palette:
         out = bytearray()
         levels = 32 # Default amount of brightness levels. Might be adjustable in the future for non-Weissblatt projects
 
-        match color_conversion_method:
-            case "euclidean_rgb":
+        match kwargs["color_conversion_method"] if "color_conversion_method" in kwargs.keys() else None:
+            case "euclidean_rgb" as ccm:
                 
                 print("Using euclidean RGB interpolation")
 
@@ -249,9 +256,9 @@ class Palette:
                                     self.colors[c]["b"] * (1-(v/(levels-1))) \
                                 )
                     
-                    out += self.rgb2index(brightness, color_conversion_method=color_conversion_method).to_bytes(1)
+                    out += self.rgb2index(brightness, color_conversion_method=ccm).to_bytes(1)
 
-            case "cylindrical_hsv" | "conical_hsv":
+            case "cylindrical_hsv" | "conical_hsv" as ccm:
                 
                 print("Using HSV interpolation")
 
@@ -285,9 +292,9 @@ class Palette:
                                             self.colors[c]["v"] * (1-v/(levels-1)) + (hsv_black.hsv_v) * v/(levels-1)
                                         )
 
-                    out += self.hsv2index(output_hsv.get_value_tuple(), color_conversion_method=color_conversion_method).to_bytes(1)
+                    out += self.hsv2index(output_hsv.get_value_tuple(), color_conversion_method=ccm).to_bytes(1)
 
-            case "cie76" | "cie2000":
+            case "cie76" | "cie2000" as ccm:
                 
                 print("Using CIELAB interpolation")
 
@@ -309,22 +316,22 @@ class Palette:
                                             input_lab.lab_b * (1-scale) + lab_black.lab_b * scale
                                         )
 
-                    out += self.lab2index(output_lab.get_value_tuple(), color_conversion_method=color_conversion_method).to_bytes(1)
+                    out += self.lab2index(output_lab.get_value_tuple(), color_conversion_method=ccm).to_bytes(1)
 
 
             case _:
-                raise RuntimeError(f'Unknown color conversion method "{color_conversion_method}".')
+                raise RuntimeError(f'Unknown color conversion method.')
 
         return out
 
-    def tinttab_tobytes(self, factor:float, conversion="rgb"):
+    def tinttab_tobytes(self, factor:float, **kwargs):
         if type(factor) != float or not (0 <= factor <= 1):
             raise RuntimeError(f"Invalid TINTTAB factor {factor}")
 
         out = bytearray()
 
-        match conversion:
-            case "rgb":
+        match kwargs["color_conversion_method"] if "color_conversion_method" in kwargs.keys() else None:
+            case "euclidean_rgb" as ccm:
                 for x,y in [(x,y) for x in range(256) for y in range(256)]:
 
                     tintcolor = ( \
@@ -332,8 +339,8 @@ class Palette:
                                     self.colors[x]["g"] * (1-factor) + self.colors[y]["g"] * factor, \
                                     self.colors[x]["b"] * (1-factor) + self.colors[y]["b"] * factor \
                                 )
-                    out += self.rgb2index(tintcolor).to_bytes(1)
-            case "hsv":
+                    out += self.rgb2index(tintcolor, color_conversion_method=ccm).to_bytes(1)
+            case "cylindrical_hsv" | "conical_hsv" as ccm:
                 for x,y in [(x,y) for x in range(256) for y in range(256)]:
 
                     tintcolor = ( \
@@ -342,8 +349,8 @@ class Palette:
                                     self.colors[x]["s"] * (1-factor) + self.colors[y]["s"] * factor, \
                                     self.colors[x]["v"] * (1-factor) + self.colors[y]["v"] * factor \
                                 )
-                    out += self.hsv2index(tintcolor).to_bytes(1)
-            case "lab":
+                    out += self.hsv2index(tintcolor, color_conversion_method=ccm).to_bytes(1)
+            case "cie76" | "cie2000" as ccm:
                 for x,y in [(x,y) for x in range(256) for y in range(256)]:
 
                     tintcolor = ( \
@@ -351,9 +358,9 @@ class Palette:
                                     self.colors[x]["cielab"].lab_a * (1-factor) + self.colors[y]["cielab"].lab_a * factor, \
                                     self.colors[x]["cielab"].lab_b * (1-factor) + self.colors[y]["cielab"].lab_b * factor \
                                 )
-                    out += self.lab2index(tintcolor).to_bytes(1)
+                    out += self.lab2index(tintcolor, color_conversion_method=ccm).to_bytes(1)
             case _:
-                raise Exception(f"Invalid color conversion method \"{conversion}\". Check tinttab definition for <++>")
+                raise Exception(f"Invalid color conversion method.")
             
         return out
 
