@@ -44,7 +44,7 @@ class PK3Makefile():
 
             re_lumpdef = r"^\s*([^\s$#]+)\s*([^\s$#]+)(?:\s*([^\$#]+))?"
             re_buildopt = r"^\s*\$(\S+)\s*=\s*(.+)"
-            re_lumpdef_kwargs = r"(?::(\S+)=(\S+))"
+            re_lumpdef_kwargs = r"(?::(?P<key>\S+)=(?P<value>\S+))|(?::(?P<switch>\S+))"
 
             #re_lumpdef = r"^\s*([^\s\?#]+)\s*([^\s\?#]+)(?:\s*([^\?#]+))?"
             #re_buildopt = r"^\s*\?(\S+)\s*:\s*(.+)"
@@ -61,34 +61,18 @@ class PK3Makefile():
                     self.options[tokens.group(1)] = tokens.group(2).rstrip()
                 
                 tokens = re.match(re_lumpdef, workline)
-                if tokens: # Is it a Buildopt?
+                if tokens: # Is it a LUMPDEF?
                     
-                    print(f"TOKENS: {tokens}")
-
                     lumpdef_kwargs = {}
 
-                    #parameters_raw = tokens.group(3).split()
                     if tokens.group(3) != None:
-                        lumpdef_kwargs = {m.group(1):m.group(2) for m in re.finditer(re_lumpdef_kwargs, tokens.group(3))}
+                        for m in re.finditer(re_lumpdef_kwargs, tokens.group(3)):
+                            if m.group("value") == None:
+                                lumpdef_kwargs[m.group("switch")] = True
+                            else:
+                                lumpdef_kwargs[m.group("key")] = m.group("value")
 
                     self.lumps.append( (tokens.group(1),tokens.group(2), lumpdef_kwargs) )
-
-                """
-                tokens = re.match(re_buildopt, workline)
-                if tokens: # Is it a Buildopt?
-                    match tokens.group(1):
-                        case "srcdir" | "workdir" | "destfile" | "palette" | "compression" | "compression_level" as cmd:
-                            self.options[cmd] = tokens.group(2).rstrip('/')
-                tokens = re.match(re_lumpdef, workline)
-                if tokens: # Is it a Lumpdef?
-                    match tokens.group(2):
-                        case "flat" | "fade" | "graphic" | "raw" | "colormap"| "tinttab" | "palette" | "marker" as cmd:
-                            self.lumps.append( tokens.group(1,2,3) )
-                        case "udmf":
-                            warnings.warn(f'Lump type "udmf" is not supported yet. Ignored')
-                        case _ as lumptype:
-                            warnings.warn(f'Invalid lumptype "{lumptype}". Ignored')
-                """
 
             print(f"BUILDOPTS: {self.options}")
             print(f"HEAD OF LUMPDEFS: {self.lumps[:10]}")
