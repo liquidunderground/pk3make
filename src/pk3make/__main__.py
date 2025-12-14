@@ -26,12 +26,16 @@ def cr_build_lump(lock, lumpdef, context):
     match lumpdef[1]:
         case "graphic":
             pal = get_palette(lock, context["opts"]["palette"], context["opts"], context["pdict"])
+
             print(f'Converting Picture "{context["srcfile"]}"...')
             bytedump = doompic.Picture(context['srcfile'], pal, offset=lumpdef[2]).tobytes()
+
         case "flat" | "fade":
             pal = get_palette(lock, context["opts"]["palette"], context["opts"], context["pdict"])
+
             print(f'Converting Flat "{context["srcfile"]}"...')
             bytedump = doompic.Flat(context['srcfile'], pal).tobytes()
+
         case "udmf":
             print(f'UDMF lumps conversion is currently not supported.')
         case "palette":
@@ -43,17 +47,19 @@ def cr_build_lump(lock, lumpdef, context):
             palparams = re.match(r"\s*([\w]+)\s*([0-9]\.[0-9]f?)?", lumpdef[2])
             pal = get_palette(lock, palparams.group(1), context["opts"], context["pdict"])
             print(f'Generating {paltype} "{context["destfile"]}" with {palparams.group(1,2)}')
-            match paltype:
-                case "tinttab":
-                    palweight = float(palparams.group(2))
-                    bytedump = pal.tinttab_tobytes(palweight)
-                case "colormap":
-                    bytedump = pal.colormap_tobytes()
+            if not args.pretend:
+                match paltype:
+                    case "tinttab":
+                        palweight = float(palparams.group(2))
+                        bytedump = pal.tinttab_tobytes(palweight)
+                    case "colormap":
+                        bytedump = pal.colormap_tobytes()
         case "raw":
-            with open(context['srcfile'], mode='rb') as s:
-                bytedump = s.read()
+            if not args.pretend:
+                with open(context['srcfile'], mode='rb') as s:
+                    bytedump = s.read()
 
-    if bytedump != None:
+    if bytedump != None and not args.pretend:
         print(f'Writing {lumpdef[1]} "{context["destfile"]}"')
         os.makedirs(os.path.dirname(context["destfile"]), exist_ok=True)
         with lock:
@@ -284,6 +290,7 @@ ap_build = ap_sub.add_parser('build', help='Compile assets into the build direct
 ap_pack = ap_sub.add_parser('pack', help='Assemble a PK3 file from the build directory')
 
 ap_main.add_argument('-v', '--verbose' , action='store_true', help='Verbose log output')
+ap_main.add_argument('-p', '--pretend' , action='store_true', help='Print build steps without actually executing them')
 ap_build.add_argument('target', nargs='?', help='Target LUMPDEF')
 
 ap_main.add_argument('makefile', nargs='?', const='./PK3Makefile', help='PK3Makefile to reference')
