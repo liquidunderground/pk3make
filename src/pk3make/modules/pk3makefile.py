@@ -93,6 +93,10 @@ class PK3Makefile():
             if "palette" not in self.options.keys():
                 raise RuntimeError("No default color palette specified. Add $palette to your PK3Makefile.")
             
+            if "default_color_conversion_method" not in self.options.keys():
+                raise RuntimeError("No default color conversion method specified. Add $default_color_conversion_method to your PK3Makefile.")
+                #self.options["default_color_conversion_method"] = "euclidean_rgb"
+            
 
             # Data-based exceptions
             if self.options["compression"] not in Compression.keys():
