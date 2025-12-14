@@ -24,12 +24,14 @@ def cr_build_lump(lock, lumpdef, context):
 
     match lumpdef[1]:
         case "graphic":
-            pal = get_palette(lock, context["opts"]["palette"], context["opts"], context["pdict"])
+            pal_name = lumpdef[2]["palette"] if "palette" in lumpdef[2].keys() else context["opts"]["palette"]
+            pal = get_palette(lock, pal_name, context["opts"], context["pdict"])
             logger.debug(f'# Converting Picture "{context["srcfile"]}"...')
             if not args.pretend:
                 bytedump = doompic.Picture(context['srcfile'], pal, offset=lumpdef[2]).tobytes()
         case "flat" | "fade":
-            pal = get_palette(lock, context["opts"]["palette"], context["opts"], context["pdict"])
+            pal_name = lumpdef[2]["palette"] if "palette" in lumpdef[2].keys() else context["opts"]["palette"]
+            pal = get_palette(lock, pal_name, context["opts"], context["pdict"])
             logger.debug(f'# Converting Flat "{context["srcfile"]}"...')
             if not args.pretend:
                 bytedump = doompic.Flat(context['srcfile'], pal).tobytes()
@@ -40,17 +42,27 @@ def cr_build_lump(lock, lumpdef, context):
             pal = get_palette(lock, lumpdef[0], context["opts"], context["pdict"])
             logger.debug(f'# Dumping palette "{context["srcfile"]}"')
             bytedump = pal.tobytes()
-        case "tinttab" | "colormap" as paltype:
-            palparams = re.match(r"\s*([\w]+)\s*([0-9]\.[0-9]f?)?", lumpdef[2])
-            pal = get_palette(lock, palparams.group(1), context["opts"], context["pdict"])
-            logger.debug(f'# Generating {paltype} "{context["destfile"]}" with {palparams.group(1,2)}')
+        case "tinttab":
+
+            logger.debug(f'Generating TINTTAB "{context["destfile"]}" with {lumpdef[2]}')
+            pal = get_palette(lock, lumpdef[2]["palette"], context["opts"], context["pdict"])
+
+            if "color_conversion_method" not in lumpdef[2]:
+                lumpdef[2]["color_conversion_method"] = pal.color_conversion_method or context["opts"]["default_color_conversion_method"]
+
             if not args.pretend:
-                match paltype:
-                    case "tinttab":
-                        palweight = float(palparams.group(2))
-                        bytedump = pal.tinttab_tobytes(palweight)
-                    case "colormap":
-                        bytedump = pal.colormap_tobytes()
+                palweight = float(lumpdef[2]["weight"])
+                bytedump = pal.tinttab_tobytes(palweight, **lumpdef[2])
+        case "colormap":
+
+            logger.debug(f'Generating COLORMAP "{context["destfile"]}" with {lumpdef[2]}')
+            pal = get_palette(lock, lumpdef[2]["palette"], context["opts"], context["pdict"])
+
+            if "color_conversion_method" not in lumpdef[2]:
+                lumpdef[2]["color_conversion_method"] = pal.color_conversion_method or context["opts"]["default_color_conversion_method"]
+
+            if not args.pretend:
+                bytedump = pal.colormap_tobytes()
         case "raw":
             if not args.pretend:
                 with open(context['srcfile'], mode='rb') as s:
