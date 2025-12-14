@@ -28,18 +28,18 @@ def cr_build_lump(lock, lumpdef, context):
             pal = get_palette(lock, pal_name, context["opts"], context["pdict"])
             logger.debug(f'# Converting Picture "{context["srcfile"]}"...')
             if not args.pretend:
-                bytedump = doompic.Picture(context['srcfile'], pal, offset=lumpdef[2]).tobytes()
+                bytedump = doompic.Picture(context['srcfile'], pal, **lumpdef[2]).tobytes()
         case "flat" | "fade":
             pal_name = lumpdef[2]["palette"] if "palette" in lumpdef[2].keys() else context["opts"]["palette"]
             pal = get_palette(lock, pal_name, context["opts"], context["pdict"])
             logger.debug(f'# Converting Flat "{context["srcfile"]}"...')
             if not args.pretend:
-                bytedump = doompic.Flat(context['srcfile'], pal).tobytes()
+                bytedump = doompic.Flat(context['srcfile'], pal, **lumpdef[2]).tobytes()
         case "udmf":
             logger.warning(f'UDMF lumps conversion is currently not supported.')
         case "palette":
             logger.debug(f'# Loading palette "{context["srcfile"]}"')
-            pal = get_palette(lock, lumpdef[0], context["opts"], context["pdict"])
+            pal = get_palette(lock, lumpdef, context["opts"], context["pdict"])
             logger.debug(f'# Dumping palette "{context["srcfile"]}"')
             bytedump = pal.tobytes()
         case "tinttab":
