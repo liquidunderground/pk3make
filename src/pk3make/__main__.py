@@ -1,9 +1,8 @@
 #!/bin/env python3
 
-
 def clean(workdir="build"):
     import shutil
-    print("# Removing workdir '{}'".format(workdir))
+    logger.info("Removing workdir '{}'".format(workdir))
     try:
         shutil.rmtree(workdir)
     except FileNotFoundError:
@@ -12,7 +11,7 @@ def clean(workdir="build"):
 
 def prepare(workdir="build"):
     import os
-    print("# Creating WORKDIR '{}'".format(workdir))
+    logger.info("Creating WORKDIR '{}'".format(workdir))
     os.makedirs(workdir, exist_ok=True)
 
 def cr_build_lump(lock, lumpdef, context):
@@ -21,32 +20,30 @@ def cr_build_lump(lock, lumpdef, context):
 
     bytedump = None
 
-    print(f'## Building {lumpdef[1]} "{context["srcfile"]}"...')
+    logger.debug(f'Building {lumpdef[1]} "{context["srcfile"]}"...')
 
     match lumpdef[1]:
         case "graphic":
             pal = get_palette(lock, context["opts"]["palette"], context["opts"], context["pdict"])
-
-            print(f'Converting Picture "{context["srcfile"]}"...')
-            bytedump = doompic.Picture(context['srcfile'], pal, offset=lumpdef[2]).tobytes()
-
+            logger.debug(f'# Converting Picture "{context["srcfile"]}"...')
+            if not args.pretend:
+                bytedump = doompic.Picture(context['srcfile'], pal, offset=lumpdef[2]).tobytes()
         case "flat" | "fade":
             pal = get_palette(lock, context["opts"]["palette"], context["opts"], context["pdict"])
-
-            print(f'Converting Flat "{context["srcfile"]}"...')
-            bytedump = doompic.Flat(context['srcfile'], pal).tobytes()
-
+            logger.debug(f'# Converting Flat "{context["srcfile"]}"...')
+            if not args.pretend:
+                bytedump = doompic.Flat(context['srcfile'], pal).tobytes()
         case "udmf":
-            print(f'UDMF lumps conversion is currently not supported.')
+            logger.warning(f'UDMF lumps conversion is currently not supported.')
         case "palette":
-            print(f'Loading palette "{context["srcfile"]}"')
+            logger.debug(f'# Loading palette "{context["srcfile"]}"')
             pal = get_palette(lock, lumpdef[0], context["opts"], context["pdict"])
-            print(f'Dumping palette "{context["srcfile"]}"')
+            logger.debug(f'# Dumping palette "{context["srcfile"]}"')
             bytedump = pal.tobytes()
         case "tinttab" | "colormap" as paltype:
             palparams = re.match(r"\s*([\w]+)\s*([0-9]\.[0-9]f?)?", lumpdef[2])
             pal = get_palette(lock, palparams.group(1), context["opts"], context["pdict"])
-            print(f'Generating {paltype} "{context["destfile"]}" with {palparams.group(1,2)}')
+            logger.debug(f'# Generating {paltype} "{context["destfile"]}" with {palparams.group(1,2)}')
             if not args.pretend:
                 match paltype:
                     case "tinttab":
@@ -60,7 +57,7 @@ def cr_build_lump(lock, lumpdef, context):
                     bytedump = s.read()
 
     if bytedump != None and not args.pretend:
-        print(f'Writing {lumpdef[1]} "{context["destfile"]}"')
+        logger.debug(f'# Writing {lumpdef[1]} "{context["destfile"]}"')
         os.makedirs(os.path.dirname(context["destfile"]), exist_ok=True)
         with lock:
             with open(context["destfile"], "wb") as ofile:
@@ -82,7 +79,7 @@ def get_palette(lock, lumpname, opts, pdict):
         elif len(p_glob) < 1:
             raise FileNotFoundError(f"Color palette {lumpname} not found.")
 
-        print(f'Caching Palette "{lumpname}"')
+        logger.info(f'Caching Palette "{lumpname}"')
         pdict[lumpname] = doompic.Palette(os.path.join(opts["srcdir"],p_glob[0][1]))
     lock.release()
     return pdict[lumpname] 
@@ -96,10 +93,10 @@ def build(makefile):
 
     opts = makefile.get_options()
 
-    print(f'# Building {opts["srcdir"]} => {opts["workdir"]}')
+    logger.info(f'BUILD {opts["srcdir"]} => {opts["workdir"]}')
 
     if opts["palette"] == None:
-        print("WARNING: Default color palette is not defined. Compiling graphics will lead to errors.")
+        logger.warning("Default color palette is not defined. Compiling graphics will lead to errors.")
 
     ppx_man = multiprocessing.Manager()
     ppx_lock = ppx_man.Lock()
@@ -162,7 +159,7 @@ def pack(makefile):
     compression = pk3makefile.Compression[opts["compression"]]
     compression_level = int(opts["compression_level"])
 
-    print(f"# Packing (compression: {opts["compression"]} @ lv {opts["compression_level"]})")
+    logger.info(f"Packing (compression: {opts["compression"]} @ lv {opts["compression_level"]})")
     
     # Keep PK3 file in memory to avoid Windows' file access locks
     pk3buf = io.BytesIO()
@@ -170,13 +167,13 @@ def pack(makefile):
     for lumpdef in makefile.get_lumpdefs():
         
         if args.verbose:
-            print(f'# Packing lumpdef {lumpdef}')
+            logger.info(f'PACK lumpdef {lumpdef}')
             
         match lumpdef[1]:
             case "marker":
                 
                 if args.verbose:
-                    print(f"## Adding marker {lumpdef[0]}")
+                    logger.info(f"ADD MARKER {lumpdef[0]}")
                 with pk3zip.PK3File(pk3buf, "a") as pk3:
                     pk3.writestr(lumpdef[0], "", compress_type=compression, compresslevel=compression_level)
             case _:
@@ -190,14 +187,14 @@ def pack(makefile):
                     wf_glob = doomglob.find_lump(opts["workdir"], searchname)
                     wf_glob = natsorted(wf_glob, alg=ns.PATH, key=lambda x: x[1])
 
-                    #print(f'\nGLOB: {wf_glob}\n')
-                    #print(f'NAMELIST: {pk3.namelist()}\n')
+                    logger.debug(f'GLOB: {wf_glob}\n')
+                    logger.debug(f'NAMELIST: {pk3.namelist()}\n')
 
                     wf_unique = [x for x in wf_glob if x[2].lstrip('/').rstrip('/') not in pk3.namelist() ]
                     if params != None and "preserve_filename" in params.groups():
                         wf_unique = [x for x in wf_glob if x[1].lstrip('/').rstrip('/') not in pk3.namelist() ]
 
-                    #print(f'\nUNIQUE GLOB: {wf_unique}\n')
+                    logger.debug(f'\nUNIQUE GLOB: {wf_unique}\n')
 
                     for lump,srcfile,arcpath in wf_unique:
                         wf_path = opts["workdir"] + '/' + srcfile
@@ -208,7 +205,7 @@ def pack(makefile):
 
                         
                         if args.verbose:
-                            print(f'## Packing lump {arcpath}')    
+                            logger.debug(f'Packing lump {arcpath}')    
 
                         pk3.write(wf_path, arcpath, compress_type=compression, compresslevel=compression_level)
 
@@ -216,19 +213,19 @@ def pack(makefile):
     # Commit in-memory PK3 file to disk
     
     if not os.path.isdir(os.path.dirname(opts["destfile"])):
-        print(f'## Creating directory {os.path.dirname(opts["destfile"])}')
+        logger.info(f'Creating directory {os.path.dirname(opts["destfile"])}')
         os.mkdir(os.path.dirname(opts["destfile"]))
 
     if os.path.isfile(opts["destfile"]):
-        print(f'## Deleting {opts["destfile"]} for recreation')
+        logger.info(f'Deleting {opts["destfile"]} for recreation')
         os.remove(opts["destfile"])
     
     with open(opts["destfile"], "wb") as f:
-        print(f'## Writing {opts["destfile"]}')
+        logger.info(f'Writing {opts["destfile"]}')
         f.write(pk3buf.getvalue())
     
     md5hash = hashlib.md5(pk3buf.getvalue())
-    print(f'\nMD5 Hash of {opts["destfile"]}: {md5hash.hexdigest()}')
+    logger.info(f'MD5 Hash of {opts["destfile"]}: {md5hash.hexdigest()}')
 
     return
 
@@ -260,23 +257,29 @@ def main():
         pk3mf_name = args.makefile
     pk3mf = pk3makefile.PK3Makefile(pk3mf_name)
 
-    print(f"MAKEOPTS: = {pk3mf.get_options()}")
+    logger.debug(f"MAKEOPTS: = {pk3mf.get_options()}")
 
-    # TODO: Add resolve for missing dependencies
-    if step_prepare:
-        prepare(pk3mf.get_options("workdir"))
-    if step_build:
-        if args.verb == "build" and args.target != None:
-            pk3mf = pk3mf.filter_lumpdefs(args.target)
-        build(pk3mf)
-    if step_pack:
-        pack(pk3mf)
+    try:
+        # TODO: Add resolve for missing dependencies
+        if step_prepare:
+            prepare(pk3mf.get_options("workdir"))
+        if step_build:
+            if args.verb == "build" and args.target != None:
+                pk3mf = pk3mf.filter_lumpdefs(args.target)
+            build(pk3mf)
+        if step_pack:
+            pack(pk3mf)
+    except Exception as e:
+        logger.exception("PK3Make threw an Exception: %s", e)
+        logger.critical("PK3Make threw an Exception: %s", e)
 
     return
 
 ### CLI Interface ###
 
 import argparse
+import logging
+import logging.config
 import pathlib
 
 ap_main = argparse.ArgumentParser(
@@ -291,11 +294,68 @@ ap_pack = ap_sub.add_parser('pack', help='Assemble a PK3 file from the build dir
 
 ap_main.add_argument('-v', '--verbose' , action='store_true', help='Verbose log output')
 ap_main.add_argument('-p', '--pretend' , action='store_true', help='Print build steps without actually executing them')
+ap_main.add_argument('--loglevel', nargs='?', default='INFO', help='Loglevel')
+ap_main.add_argument('--logfile', nargs='?', default='pk3make.log', help='Log file')
 ap_build.add_argument('target', nargs='?', help='Target LUMPDEF')
 
 ap_main.add_argument('makefile', nargs='?', const='./PK3Makefile', help='PK3Makefile to reference')
 
 args = ap_main.parse_args()
+
+#-- Set up Logging --#
+loglevel = args.loglevel
+if args.verbose:
+    loglevel = logging.DEBUG
+
+logging_settings = {
+    'version' : 1,
+    'filename': args.logfile, 
+    'formatters': {
+        'stdout': {
+            'format'  : '[%(levelname)s] %(message)s',
+        },
+        'logfile': {
+            'format'  : '[%(asctime)s %(levelname)s] %(message)s',
+            'datefmt' : '%Y-%d-%mT%H:%M:%S',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class'   : "logging.StreamHandler", 
+            'formatter'   : "stdout", 
+            'level': loglevel, 
+            'stream': 'ext://sys.stdout',
+        },
+        'logfile': {
+            'class' : "logging.handlers.RotatingFileHandler", 
+            'encoding': "utf-8",
+            'filename': args.logfile, 
+            'formatter'   : "logfile", 
+            'level' : 'DEBUG',
+        },
+    },
+    'loggers': {
+        __name__:{
+             "level": "DEBUG",
+             'handlers' : ["console","logfile"],
+             'propagate' : False,
+         },
+         "py.warnings":{
+             "level": "WARNING",
+             'handlers' : ["console","logfile"],
+             'propagate' : False,
+         },
+    },
+    'root':{
+        'level' : loglevel,
+        'handlers' : ["console","logfile"],
+    },
+}
+
+logging.config.dictConfig(logging_settings)
+logging.captureWarnings(True)
+logger = logging.getLogger(__name__)
+
 
 if __name__ == "__main__":
     main()

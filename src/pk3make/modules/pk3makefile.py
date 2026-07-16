@@ -1,3 +1,5 @@
+import warnings
+
 class PK3MakeConfigurationError(Exception):
     """To be raised when a lump should really be unique"""
     pass
@@ -55,9 +57,9 @@ class PK3Makefile():
                         case "flat" | "fade" | "graphic" | "raw" | "colormap"| "tinttab" | "palette" | "marker" as cmd:
                             self.lumps.append( tokens.group(1,2,3) )
                         case "udmf":
-                            print(f'Lump type "udmf" is not supported yet. Ignored')
+                            warnings.warn(f'Lump type "udmf" is not supported yet. Ignored')
                         case _ as lumptype:
-                            print(f'Invalid lumptype "{lumptype}". Ignored')
+                            warnings.warn(f'Invalid lumptype "{lumptype}". Ignored')
 
     def get_options(self, option=None):
         if option == None:
